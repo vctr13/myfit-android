@@ -35,28 +35,44 @@ class PedometerViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             profileDao.getProfileOnce()?.let { weightKg = it.weight_kg }
         }
+        // Сразу показываем последнее сохранённое значение — не ждём срабатывания сенсора
+        val today = LocalDate.now().toString()
+        val base = prefs.getInt("base_$today", -1)
+        if (base != -1) {
+            val lastKnown = prefs.getInt("last_steps_$today", base)
+            todaySteps = (lastKnown - base).coerceAtLeast(0)
+        }
     }
 
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             val stepsFromBoot = event.values[0].toInt()
             val today = LocalDate.now().toString()
+            val yesterday = LocalDate.now().minusDays(1).toString()
             val baseKey = "base_$today"
             val base = prefs.getInt(baseKey, -1)
 
             when {
                 base == -1 -> {
-                    // First reading today — save as baseline
-                    prefs.edit().putInt(baseKey, stepsFromBoot).apply()
-                    todaySteps = 0
+                    // Первое чтение сегодня.
+                    // Берём вчерашний последний счётчик как базу «начало дня»
+                    val yesterdayLast = prefs.getInt("last_steps_$yesterday", -1)
+                    val baseline = if (yesterdayLast in 1..stepsFromBoot) yesterdayLast
+                                   else stepsFromBoot
+                    prefs.edit().putInt(baseKey, baseline).apply()
+                    todaySteps = (stepsFromBoot - baseline).coerceAtLeast(0)
                 }
                 stepsFromBoot < base -> {
-                    // Device rebooted — step counter reset to 0
+                    // Телефон перезагружали — счётчик сбросился
                     prefs.edit().putInt(baseKey, 0).apply()
                     todaySteps = stepsFromBoot
                 }
-                else -> todaySteps = stepsFromBoot - base
+                else -> {
+                    todaySteps = stepsFromBoot - base
+                }
             }
+            // Сохраняем текущее значение, чтобы завтра использовать как базу
+            prefs.edit().putInt("last_steps_$today", stepsFromBoot).apply()
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -76,9 +92,7 @@ class PedometerViewModel(application: Application) : AndroidViewModel(applicatio
         stopListening()
     }
 
-    val distanceKm: Float get() = todaySteps * 0.00075f  // avg stride 75 cm
-
+    val distanceKm: Float get() = todaySteps * 0.00075f
     val caloriesBurned: Int get() = (todaySteps * 0.04f * (weightKg / 70f)).toInt()
-
     val progressFraction: Float get() = (todaySteps.toFloat() / stepGoal).coerceIn(0f, 1f)
 }
