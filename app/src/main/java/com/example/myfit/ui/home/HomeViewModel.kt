@@ -1,7 +1,6 @@
 package com.example.myfit.ui.home
 
 import android.app.Application
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,7 +33,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = MyFitApp.from(application)
     private val dailyLogDao = app.database.dailyLogDao()
-    private val stepPrefs = application.getSharedPreferences("step_prefs", Context.MODE_PRIVATE)
     private val _dateFlow = MutableStateFlow(LocalDate.now().toString())
 
     fun refreshDate() { _dateFlow.value = LocalDate.now().toString() }
@@ -51,20 +49,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { date -> app.database.workoutDayDao().getTotalCaloriesFlow(date) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    // ── Калории с шагов (из SharedPreferences шагомера) ──────────────────────
-    private val _stepCalories = MutableStateFlow(0)
-    val stepCalories: StateFlow<Int> = _stepCalories.asStateFlow()
-
-    fun refreshStepCalories() {
-        val today = LocalDate.now().toString()
-        val base = stepPrefs.getInt("base_$today", -1)
-        val steps = if (base != -1) {
-            val lastKnown = stepPrefs.getInt("last_steps_$today", base)
-            (lastKnown - base).coerceAtLeast(0)
-        } else 0
-        val weight = profile.value?.weight_kg ?: 70f
-        _stepCalories.value = (steps * 0.04f * (weight / 70f)).toInt()
-    }
+    // ── Калории с шагов — реактивно из StepTracker + вес из профиля ──────────
+    val stepCalories: StateFlow<Int> = combine(
+        app.stepTracker.todaySteps,
+        profile
+    ) { steps, p ->
+        val weight = p?.weight_kg ?: 70f
+        (steps * 0.04f * (weight / 70f)).toInt()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // ── Тренировочный день ────────────────────────────────────────────────────
     val isTrainingDay: StateFlow<Boolean> = _dateFlow

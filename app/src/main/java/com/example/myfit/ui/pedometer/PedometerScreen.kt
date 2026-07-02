@@ -1,4 +1,4 @@
-﻿package com.example.myfit.ui.pedometer
+package com.example.myfit.ui.pedometer
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -29,7 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myfit.MyFitApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,11 +64,15 @@ fun PedometerScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> hasPermission = granted }
+    ) { granted ->
+        hasPermission = granted
+    }
 
-    DisposableEffect(hasPermission) {
-        if (hasPermission && vm.isSensorAvailable) vm.startListening()
-        onDispose { vm.stopListening() }
+    // Когда разрешение получено — запускаем StepTracker (если ещё не запущен)
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            (ctx.applicationContext as MyFitApp).stepTracker.start(ctx)
+        }
     }
 
     Scaffold(
@@ -105,7 +110,6 @@ fun PedometerScreen(
 private fun StepCounterContent(vm: PedometerViewModel) {
     Spacer(Modifier.height(24.dp))
 
-    // Circular progress
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp)) {
         CircularProgressIndicator(
             progress = { vm.progressFraction },
@@ -129,7 +133,6 @@ private fun StepCounterContent(vm: PedometerViewModel) {
 
     Spacer(Modifier.height(8.dp))
 
-    // Stat cards
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatCard("Расстояние", "${"%.2f".format(vm.distanceKm)} км", Modifier.weight(1f))
         StatCard("Калории", "${vm.caloriesBurned} ккал", Modifier.weight(1f))

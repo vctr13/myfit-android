@@ -76,10 +76,7 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit,
     vm: HomeViewModel = viewModel()
 ) {
-    LaunchedEffect(Unit) {
-        vm.refreshDate()
-        vm.refreshStepCalories()
-    }
+    LaunchedEffect(Unit) { vm.refreshDate() }
 
     val profile             by vm.profile.collectAsState()
     val today               by vm.todayNutrition.collectAsState()
