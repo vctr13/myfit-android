@@ -50,4 +50,7 @@ interface WorkoutDayDao {
 
     @Query("SELECT * FROM workout_day WHERE is_completed = 1 ORDER BY date DESC, created_at DESC LIMIT :limit")
     fun getRecent(limit: Int): Flow<List<WorkoutDay>>
+
+    @Query("SELECT COALESCE(SUM(calories_burned), 0) FROM workout_day WHERE date = :date AND is_completed = 1")
+    fun getTotalCaloriesFlow(date: String): Flow<Int>
 }

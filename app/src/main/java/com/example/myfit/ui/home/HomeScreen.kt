@@ -27,6 +27,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -52,6 +53,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,13 +76,18 @@ fun HomeScreen(
     onOpenDrawer: () -> Unit,
     vm: HomeViewModel = viewModel()
 ) {
-    LaunchedEffect(Unit) { vm.refreshDate() }
+    LaunchedEffect(Unit) {
+        vm.refreshDate()
+        vm.refreshStepCalories()
+    }
 
-    val profile        by vm.profile.collectAsState()
-    val today          by vm.todayNutrition.collectAsState()
-    val weightHistory  by vm.weightHistory.collectAsState()
-    val weightPeriod   by vm.weightPeriod.collectAsState()
-    val isTrainingDay  by vm.isTrainingDay.collectAsState()
+    val profile             by vm.profile.collectAsState()
+    val today               by vm.todayNutrition.collectAsState()
+    val weightHistory       by vm.weightHistory.collectAsState()
+    val weightPeriod        by vm.weightPeriod.collectAsState()
+    val isTrainingDay       by vm.isTrainingDay.collectAsState()
+    val stepCalories        by vm.stepCalories.collectAsState()
+    val workoutCalories     by vm.todayWorkoutCalories.collectAsState()
 
     Scaffold(
         topBar = {
@@ -136,12 +143,12 @@ fun HomeScreen(
                 val targetKcal  = if (isTrainingDay) p.target_kcal_training  else p.target_kcal
                 val targetWater = if (isTrainingDay) p.target_water_ml_training.toFloat() else p.target_water_ml.toFloat()
 
-                NutritionSummaryCard(
-                    title       = "Калории",
-                    consumed    = today.calories,
-                    target      = targetKcal,
-                    unit        = "ккал",
-                    accentColor = MaterialTheme.colorScheme.primary
+                CaloriesCard(
+                    eaten           = today.calories,
+                    target          = targetKcal,
+                    stepCalories    = stepCalories,
+                    workoutCalories = workoutCalories,
+                    accentColor     = MaterialTheme.colorScheme.primary
                 )
 
                 MacroCard(today = today, profile = p, isTrainingDay = isTrainingDay)
@@ -186,6 +193,103 @@ fun HomeScreen(
             },
             confirmButton  = { TextButton(onClick = { vm.saveWeight() }) { Text("Сохранить") } },
             dismissButton  = { TextButton(onClick = { vm.dismissWeightDialog() }) { Text("Отмена") } }
+        )
+    }
+}
+
+// ── Calories card ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun CaloriesCard(
+    eaten: Float,
+    target: Float,
+    stepCalories: Int,
+    workoutCalories: Int,
+    accentColor: Color
+) {
+    val burnedTotal = stepCalories + workoutCalories
+    val net = (eaten - burnedTotal).coerceAtLeast(0f)
+    val progress = if (target > 0) (net / target).coerceIn(0f, 1f) else 0f
+    val remaining = (target - net).coerceAtLeast(0f)
+
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Калории", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(10.dp))
+
+            // Съедено
+            CalorieRow(
+                label = "Съедено",
+                value = "${eaten.roundToInt()} ккал",
+                valueColor = accentColor,
+                bold = false
+            )
+            Spacer(Modifier.height(4.dp))
+
+            // Шаги
+            CalorieRow(
+                label = "− Шаги",
+                value = "${stepCalories} ккал",
+                valueColor = MaterialTheme.colorScheme.tertiary,
+                bold = false
+            )
+            Spacer(Modifier.height(4.dp))
+
+            // Тренировки
+            CalorieRow(
+                label = "− Тренировки",
+                value = "${workoutCalories} ккал",
+                valueColor = MaterialTheme.colorScheme.tertiary,
+                bold = false
+            )
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(8.dp))
+
+            // Фактические (net)
+            CalorieRow(
+                label = "Фактические",
+                value = "${net.roundToInt()} / ${target.roundToInt()} ккал",
+                valueColor = accentColor,
+                bold = true
+            )
+
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress   = { progress },
+                modifier   = Modifier.fillMaxWidth(),
+                color      = accentColor,
+                trackColor = accentColor.copy(alpha = 0.15f)
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text  = if (remaining > 0) "Осталось: ${remaining.roundToInt()} ккал" else "Цель достигнута!",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalorieRow(label: String, value: String, valueColor: Color, bold: Boolean) {
+    Row(
+        modifier              = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment     = Alignment.CenterVertically
+    ) {
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal
+        )
+        Text(
+            text  = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+            fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }
