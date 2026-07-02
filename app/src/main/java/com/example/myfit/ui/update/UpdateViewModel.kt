@@ -2,7 +2,10 @@ package com.example.myfit.ui.update
 
 import android.app.Application
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,12 +19,13 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 sealed class UpdateState {
-    object Idle       : UpdateState()
-    object Checking   : UpdateState()
-    data class UpToDate(val version: String)          : UpdateState()
-    data class UpdateAvailable(val release: ReleaseInfo) : UpdateState()
-    object Downloading                                : UpdateState()
-    data class Error(val message: String)             : UpdateState()
+    object Idle                                           : UpdateState()
+    object Checking                                       : UpdateState()
+    data class UpToDate(val version: String)              : UpdateState()
+    data class UpdateAvailable(val release: ReleaseInfo)  : UpdateState()
+    object Downloading                                    : UpdateState()
+    object NeedsPermission                                : UpdateState()
+    data class Error(val message: String)                 : UpdateState()
 }
 
 class UpdateViewModel(app: Application) : AndroidViewModel(app) {
@@ -51,14 +55,34 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun openInstallPermissionSettings() {
+        val ctx = getApplication<Application>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                data = Uri.parse("package:${ctx.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx.startActivity(intent)
+        }
+    }
+
     fun downloadAndInstall(release: ReleaseInfo) {
+        val ctx = getApplication<Application>()
+
+        // Проверяем разрешение на установку (Android 8+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !ctx.packageManager.canRequestPackageInstalls()
+        ) {
+            state = UpdateState.NeedsPermission
+            return
+        }
+
         state = UpdateState.Downloading
         viewModelScope.launch {
             try {
-                val ctx = getApplication<Application>()
                 val destFile = File(
                     ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                    "myfit-update.apk"
+                    "vfit-update.apk"
                 )
                 UpdateChecker.downloadApk(release.apkUrl, destFile)
 
@@ -73,7 +97,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
                 ctx.startActivity(intent)
                 state = UpdateState.Idle
             } catch (e: Exception) {
-                state = UpdateState.Error("Ошибка загрузки: ${e.message}")
+                state = UpdateState.Error("Ошибка: ${e.message}")
             }
         }
     }

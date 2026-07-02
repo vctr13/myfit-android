@@ -295,6 +295,19 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
                         )
                     }
 
+                    is UpdateState.NeedsPermission -> {
+                        Text(
+                            "Разрешите установку из неизвестных источников для VFit.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "После выдачи разрешения вернитесь и нажмите «Обновить» снова.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     is UpdateState.Error -> {
                         Text(
                             state.message,
@@ -311,13 +324,17 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
                     Button(onClick = { vm.downloadAndInstall(state.release) }) {
                         Text("Обновить")
                     }
+                is UpdateState.NeedsPermission ->
+                    Button(onClick = { vm.openInstallPermissionSettings() }) {
+                        Text("Открыть настройки")
+                    }
                 is UpdateState.Downloading -> { /* кнопок нет */ }
                 else ->
                     TextButton(onClick = onDismiss) { Text("Закрыть") }
             }
         },
         dismissButton = {
-            if (state is UpdateState.UpdateAvailable) {
+            if (state is UpdateState.UpdateAvailable || state is UpdateState.NeedsPermission) {
                 TextButton(onClick = onDismiss) { Text("Отмена") }
             }
         }

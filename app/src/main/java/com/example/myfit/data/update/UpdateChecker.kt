@@ -58,10 +58,13 @@ object UpdateChecker {
     suspend fun downloadApk(url: String, destFile: File) = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("Ошибка загрузки: HTTP ${response.code}")
             val body = response.body ?: error("Пустой ответ сервера")
             FileOutputStream(destFile).use { out ->
                 body.byteStream().copyTo(out)
             }
         }
+        if (!destFile.exists() || destFile.length() < 1_000_000L)
+            error("Файл повреждён (размер: ${destFile.length()} байт)")
     }
 }
