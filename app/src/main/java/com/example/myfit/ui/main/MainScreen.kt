@@ -1,4 +1,4 @@
-package com.example.myfit.ui.main
+﻿package com.example.myfit.ui.main
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,7 +66,10 @@ import com.example.myfit.ui.products.MyProductsScreen
 import com.example.myfit.ui.settings.SettingsScreen
 import com.example.myfit.ui.update.UpdateState
 import com.example.myfit.ui.update.UpdateViewModel
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 private data class DrawerItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -79,7 +83,8 @@ private val mainItems = listOf(
 )
 
 @Composable
-fun MainScreen() {
+fun MainScreen(onResetApp: () -> Unit = {}) {
+    val ctx            = LocalContext.current
     val navController  = rememberNavController()
     val drawerState    = rememberDrawerState(DrawerValue.Closed)
     val scope          = rememberCoroutineScope()
@@ -160,6 +165,20 @@ fun MainScreen() {
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
+
+                HorizontalDivider(Modifier.padding(vertical = 10.dp))
+
+                NavigationDrawerItem(
+                    icon     = { Icon(Icons.Filled.ExitToApp, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error) },
+                    label    = { Text("Выйти из приложения",
+                                    color = MaterialTheme.colorScheme.error) },
+                    selected = false,
+                    onClick  = {
+                            exitProcess(0)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
             }
         }
     ) {
@@ -202,7 +221,8 @@ fun MainScreen() {
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onOpenDrawer = { openDrawer() },
-                    onNavigateToMyProducts = { navController.navigate(Screen.MyProducts.route) }
+                    onNavigateToMyProducts = { navController.navigate(Screen.MyProducts.route) },
+                    onResetApp = onResetApp
                 )
             }
             composable(Screen.MyProducts.route) {

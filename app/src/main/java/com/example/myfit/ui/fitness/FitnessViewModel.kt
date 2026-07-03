@@ -1,4 +1,4 @@
-package com.example.myfit.ui.fitness
+﻿package com.example.myfit.ui.fitness
 
 import android.app.Application
 import android.content.Context
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.math.roundToInt
 import java.time.YearMonth
 
 // ── Domain types ──────────────────────────────────────────────────────────────
@@ -266,11 +267,27 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
         if (logged.isEmpty()) { cancelWorkout(); return }
 
         viewModelScope.launch {
+            val bodyWeight = profileDao.getProfileOnce()?.current_weight_kg ?: 70f
+
+            val totalCalories = logged.sumOf { ae ->
+                val externalWeight = ae.weightKg
+                if (ae.isTimeBased) {
+                    val totalSeconds = ae.sets.sumOf { it.value }
+                    val effectiveWeight = bodyWeight + externalWeight * 0.3f
+                    (totalSeconds * effectiveWeight * 0.0014).toDouble()
+                } else {
+                    val totalReps = ae.sets.sumOf { it.value }
+                    val effectiveWeight = externalWeight + bodyWeight * 0.4f
+                    (totalReps * effectiveWeight * 0.025).toDouble()
+                }
+            }.roundToInt().coerceAtLeast(0)
+
             val dayId = workoutDao.insert(
                 WorkoutDay(
-                    date         = LocalDate.now().toString(),
-                    label        = if (trainingMode == TrainingMode.HOME) "Домашняя тренировка" else "Тренировка в зале",
-                    is_completed = true
+                    date            = LocalDate.now().toString(),
+                    label           = if (trainingMode == TrainingMode.HOME) "Домашняя тренировка" else "Тренировка в зале",
+                    is_completed    = true,
+                    calories_burned = totalCalories
                 )
             ).toInt()
 

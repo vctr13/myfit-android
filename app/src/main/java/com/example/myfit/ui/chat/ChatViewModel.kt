@@ -1,4 +1,4 @@
-package com.example.myfit.ui.chat
+﻿package com.example.myfit.ui.chat
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -27,6 +27,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         userProfileDao = app.database.userProfileDao(),
         productDao     = app.database.productDao(),
         foodEntryDao   = app.database.foodEntryDao(),
+        dailyLogDao    = app.database.dailyLogDao(),
         apiKeyProvider = { app.securePrefs.apiKey },
         modelProvider  = { app.securePrefs.apiModel }
     )

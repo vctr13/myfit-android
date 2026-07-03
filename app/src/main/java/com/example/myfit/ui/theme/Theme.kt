@@ -1,4 +1,4 @@
-package com.example.myfit.ui.theme
+﻿package com.example.myfit.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +21,7 @@ private val LightColorScheme = lightColorScheme(
     tertiaryContainer    = Green90,
     onTertiaryContainer  = Green10,
     background           = NeutralBg,
-    surface              = Color.White,
+    surface              = Color(0xFFFBFFFB),
     onBackground         = Color(0xFF191C20),
     onSurface            = Color(0xFF191C20),
     surfaceVariant       = Color(0xFFE2E5F1),
@@ -32,6 +32,11 @@ private val LightColorScheme = lightColorScheme(
     onError              = Color.White,
     errorContainer       = Color(0xFFFFDAD6),
     onErrorContainer     = Color(0xFF410002),
+    surfaceContainerLowest  = SurfaceContainerLowest,
+    surfaceContainerLow     = SurfaceContainerLow,
+    surfaceContainer        = SurfaceContainerMid,
+    surfaceContainerHigh    = SurfaceContainerHigh,
+    surfaceContainerHighest = SurfaceContainerHighest,
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -48,7 +53,7 @@ private val DarkColorScheme = darkColorScheme(
     tertiaryContainer    = Green30,
     onTertiaryContainer  = Green90,
     background           = NeutralDark,
-    surface              = NeutralDark,
+    surface              = SurfaceContainerLowestDark,
     onBackground         = Color(0xFFE2E2E9),
     onSurface            = Color(0xFFE2E2E9),
     surfaceVariant       = Color(0xFF45474F),
@@ -59,6 +64,11 @@ private val DarkColorScheme = darkColorScheme(
     onError              = Color(0xFF690005),
     errorContainer       = Color(0xFF93000A),
     onErrorContainer     = Color(0xFFFFDAD6),
+    surfaceContainerLowest  = SurfaceContainerLowestDark,
+    surfaceContainerLow     = SurfaceContainerLowDark,
+    surfaceContainer        = SurfaceContainerMidDark,
+    surfaceContainerHigh    = SurfaceContainerHighDark,
+    surfaceContainerHighest = SurfaceContainerHighestDark,
 )
 
 @Composable

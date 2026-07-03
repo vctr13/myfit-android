@@ -1,4 +1,4 @@
-package com.example.myfit.data.profile
+﻿package com.example.myfit.data.profile
 
 import com.example.myfit.data.db.entity.FoodEntry
 import com.example.myfit.data.db.entity.Product
@@ -15,7 +15,8 @@ object ProfileContextBuilder {
         profile: UserProfile,
         products: List<Product> = emptyList(),
         todayEntries: List<FoodEntry> = emptyList(),
-        todayTotals: DailyNutrition? = null
+        todayTotals: DailyNutrition? = null,
+        isTrainingDay: Boolean = false
     ): String = buildString {
         val today = LocalDate.now()
         val todayIso = today.toString()
@@ -27,7 +28,7 @@ object ProfileContextBuilder {
         appendLine("СЕГОДНЯШНЯЯ ДАТА: $todayIso (${today.format(dateFmt)})")
         appendLine()
         appendLine("Профиль пользователя:")
-        appendLine("• Возраст: ${profile.age} лет")
+        appendLine("• Возраст: ${profile.computedAge} лет")
         appendLine("• Пол: ${if (profile.gender == "male") "мужской" else "женский"}")
         appendLine("• Рост: ${profile.height_cm.roundToInt()} см")
         val initialWt = profile.weight_kg.roundToInt()
@@ -41,23 +42,30 @@ object ProfileContextBuilder {
         appendLine("• Цель: ${goalLabel(profile.goal)}")
         appendLine("• Уровень активности: ${activityLabel(profile.activity_level)}")
         appendLine()
-        appendLine("Рассчитанные нормы на день:")
-        appendLine("• Целевые калории: ${profile.target_kcal.roundToInt()} ккал")
-        appendLine("• Белки: ${profile.target_protein_g.roundToInt()} г")
-        appendLine("• Жиры: ${profile.target_fat_g.roundToInt()} г")
-        appendLine("• Углеводы: ${profile.target_carbs_g.roundToInt()} г")
-        appendLine("• Вода: ${profile.target_water_ml} мл")
+        val targetKcal   = if (isTrainingDay) profile.target_kcal_training   else profile.target_kcal
+        val targetProtein = profile.target_protein_g
+        val targetFat    = if (isTrainingDay) profile.target_fat_g_training   else profile.target_fat_g
+        val targetCarbs  = if (isTrainingDay) profile.target_carbs_g_training else profile.target_carbs_g
+        val targetWater  = if (isTrainingDay) profile.target_water_ml_training else profile.target_water_ml
+
+        val dayTypeLabel = if (isTrainingDay) " (тренировочный день)" else ""
+        appendLine("Рассчитанные нормы на день$dayTypeLabel:")
+        appendLine("• Целевые калории: ${targetKcal.roundToInt()} ккал")
+        appendLine("• Белки: ${targetProtein.roundToInt()} г")
+        appendLine("• Жиры: ${targetFat.roundToInt()} г")
+        appendLine("• Углеводы: ${targetCarbs.roundToInt()} г")
+        appendLine("• Вода: ${targetWater} мл")
         appendLine()
 
         // ── Today's food log from database ────────────────────────────────────
         if (todayTotals != null) {
             appendLine("══════════════════════════════════════════")
             appendLine("ДАННЫЕ ЗА СЕГОДНЯ (из базы данных приложения):")
-            appendLine("• Калории: ${todayTotals.calories.roundToInt()} / ${profile.target_kcal.roundToInt()} ккал")
-            appendLine("• Белки:   ${"%.1f".format(todayTotals.protein)} / ${profile.target_protein_g.roundToInt()} г")
-            appendLine("• Жиры:    ${"%.1f".format(todayTotals.fat)} / ${profile.target_fat_g.roundToInt()} г")
-            appendLine("• Углеводы:${"%.1f".format(todayTotals.carbs)} / ${profile.target_carbs_g.roundToInt()} г")
-            appendLine("• Вода:    ${todayTotals.water_ml.roundToInt()} / ${profile.target_water_ml} мл")
+            appendLine("• Калории: ${todayTotals.calories.roundToInt()} / ${targetKcal.roundToInt()} ккал")
+            appendLine("• Белки:   ${"%.1f".format(todayTotals.protein)} / ${targetProtein.roundToInt()} г")
+            appendLine("• Жиры:    ${"%.1f".format(todayTotals.fat)} / ${targetFat.roundToInt()} г")
+            appendLine("• Углеводы:${"%.1f".format(todayTotals.carbs)} / ${targetCarbs.roundToInt()} г")
+            appendLine("• Вода:    ${todayTotals.water_ml.roundToInt()} / ${targetWater} мл")
 
             if (todayEntries.isNotEmpty()) {
                 appendLine()

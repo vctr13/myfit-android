@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.dao
+﻿package com.example.myfit.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -23,4 +23,10 @@ interface WeightDao {
 
     @Query("DELETE FROM weight_entry WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("DELETE FROM weight_entry WHERE date < :cutoff")
+    suspend fun deleteOlderThan(cutoff: String)
+
+    @Query("DELETE FROM weight_entry")
+    suspend fun deleteAll()
 }

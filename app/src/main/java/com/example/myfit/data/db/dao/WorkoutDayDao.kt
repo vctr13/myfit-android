@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.dao
+﻿package com.example.myfit.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -53,4 +53,5 @@ interface WorkoutDayDao {
 
     @Query("SELECT COALESCE(SUM(calories_burned), 0) FROM workout_day WHERE date = :date AND is_completed = 1")
     fun getTotalCaloriesFlow(date: String): Flow<Int>
+
 }

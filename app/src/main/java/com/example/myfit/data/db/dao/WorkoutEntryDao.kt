@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.dao
+﻿package com.example.myfit.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -48,4 +48,7 @@ interface WorkoutEntryDao {
 
     @Query("SELECT * FROM workout_entry WHERE exercise_id = :exerciseId ORDER BY id DESC LIMIT :limit")
     suspend fun getRecentEntriesForExercise(exerciseId: Int, limit: Int): List<WorkoutEntry>
+
+    @Query("DELETE FROM workout_entry WHERE workout_day_id NOT IN (SELECT id FROM workout_day)")
+    suspend fun deleteOrphans()
 }

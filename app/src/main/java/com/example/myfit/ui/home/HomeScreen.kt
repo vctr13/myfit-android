@@ -1,4 +1,4 @@
-package com.example.myfit.ui.home
+﻿package com.example.myfit.ui.home
 
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
@@ -117,7 +117,7 @@ fun HomeScreen(
                 )
                 if (p != null) {
                     Text(
-                        text  = "Цель: ${goalLabel(p.goal)} · ${p.target_kcal.roundToInt()} ккал / день",
+                        text  = "Цель: ${goalLabel(p.goal)} · ${(if (isTrainingDay) p.target_kcal_training else p.target_kcal).roundToInt()} ккал / день",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -204,54 +204,21 @@ private fun CaloriesCard(
     workoutCalories: Int,
     accentColor: Color
 ) {
+    val progress  = if (target > 0) (eaten / target).coerceIn(0f, 1f) else 0f
+    val remaining = (target - eaten).coerceAtLeast(0f)
     val burnedTotal = stepCalories + workoutCalories
-    val net = (eaten - burnedTotal).coerceAtLeast(0f)
-    val progress = if (target > 0) (net / target).coerceIn(0f, 1f) else 0f
-    val remaining = (target - net).coerceAtLeast(0f)
 
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Калории", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(10.dp))
 
-            // Съедено
             CalorieRow(
-                label = "Съедено",
-                value = "${eaten.roundToInt()} ккал",
+                label      = "Съедено",
+                value      = "${eaten.roundToInt()} / ${target.roundToInt()} ккал",
                 valueColor = accentColor,
-                bold = false
+                bold       = true
             )
-            Spacer(Modifier.height(4.dp))
-
-            // Шаги
-            CalorieRow(
-                label = "− Шаги",
-                value = "${stepCalories} ккал",
-                valueColor = MaterialTheme.colorScheme.tertiary,
-                bold = false
-            )
-            Spacer(Modifier.height(4.dp))
-
-            // Тренировки
-            CalorieRow(
-                label = "− Тренировки",
-                value = "${workoutCalories} ккал",
-                valueColor = MaterialTheme.colorScheme.tertiary,
-                bold = false
-            )
-
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(8.dp))
-
-            // Фактические (net)
-            CalorieRow(
-                label = "Фактические",
-                value = "${net.roundToInt()} / ${target.roundToInt()} ккал",
-                valueColor = accentColor,
-                bold = true
-            )
-
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress   = { progress },
@@ -263,8 +230,39 @@ private fun CaloriesCard(
             Text(
                 text  = if (remaining > 0) "Осталось: ${remaining.roundToInt()} ккал" else "Цель достигнута!",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.primary
             )
+
+            if (burnedTotal > 0) {
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(8.dp))
+                CalorieRow(
+                    label      = "Сожжено",
+                    value      = "${burnedTotal} ккал",
+                    valueColor = MaterialTheme.colorScheme.tertiary,
+                    bold       = true
+                )
+                if (stepCalories > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    CalorieRow(
+                        label      = "  шаги",
+                        value      = "${stepCalories} ккал",
+                        valueColor = MaterialTheme.colorScheme.tertiary,
+                        bold       = false
+                    )
+                }
+                if (workoutCalories > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    CalorieRow(
+                        label      = "  тренировка",
+                        value      = "${workoutCalories} ккал",
+                        valueColor = MaterialTheme.colorScheme.tertiary,
+                        bold       = false
+                    )
+                }
+            }
         }
     }
 }

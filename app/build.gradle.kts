@@ -1,4 +1,4 @@
-import java.util.Properties
+﻿import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -20,8 +20,8 @@ android {
         applicationId = "com.example.myfit"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 11
+        versionName = "1.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

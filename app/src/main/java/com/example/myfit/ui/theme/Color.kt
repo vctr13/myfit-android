@@ -1,4 +1,4 @@
-package com.example.myfit.ui.theme
+﻿package com.example.myfit.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -25,8 +25,20 @@ val Green80 = Color(0xFF9EF065)   // bright lime (dark theme)
 val Green90 = Color(0xFFC7FEA0)   // light green container / user bubble
 
 // ── Neutral ───────────────────────────────────────────────────────────────────
-val NeutralBg   = Color(0xFFF5F7FA)  // light background
-val NeutralDark = Color(0xFF111418)  // dark background
+val NeutralBg   = Color(0xFFF5FAF5)  // light background (subtle green tint)
+val NeutralDark = Color(0xFF111411)  // dark background  (subtle green tint)
+
+// ── Surface containers (green-tinted, replaces M3 pinkish baseline) ───────────
+val SurfaceContainerLowest      = Color(0xFFFBFFFB)
+val SurfaceContainerLow         = Color(0xFFF2F7F2)
+val SurfaceContainerMid         = Color(0xFFEEF3EE)
+val SurfaceContainerHigh        = Color(0xFFE6ECE6)
+val SurfaceContainerHighest     = Color(0xFFE0E6E0)
+val SurfaceContainerLowestDark  = Color(0xFF0B110B)
+val SurfaceContainerLowDark     = Color(0xFF111711)
+val SurfaceContainerMidDark     = Color(0xFF161C16)
+val SurfaceContainerHighDark    = Color(0xFF1B221B)
+val SurfaceContainerHighestDark = Color(0xFF202820)
 
 // ── Semantic macro colors ─────────────────────────────────────────────────────
 // Accent (progress bars, icons)

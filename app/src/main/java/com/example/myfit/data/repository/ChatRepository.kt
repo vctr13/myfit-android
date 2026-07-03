@@ -1,6 +1,7 @@
-package com.example.myfit.data.repository
+﻿package com.example.myfit.data.repository
 
 import com.example.myfit.data.db.dao.ChatMessageDao
+import com.example.myfit.data.db.dao.DailyLogDao
 import com.example.myfit.data.db.dao.FoodEntryDao
 import com.example.myfit.data.db.dao.ProductDao
 import com.example.myfit.data.db.dao.UserProfileDao
@@ -19,13 +20,20 @@ class ChatRepository(
     private val userProfileDao: UserProfileDao,
     private val productDao: ProductDao,
     private val foodEntryDao: FoodEntryDao,
+    private val dailyLogDao: DailyLogDao,
     private val apiKeyProvider: () -> String,
     private val modelProvider: () -> String,
     private val chatType: String = CHAT_MAIN
 ) {
     private val gson = Gson()
 
-    fun messages(): Flow<List<ChatMessage>> = chatMessageDao.getMessages(chatType)
+    fun messages(): Flow<List<ChatMessage>> {
+        val todayStartMs = LocalDate.now()
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        return chatMessageDao.getMessagesFrom(chatType, todayStartMs)
+    }
 
     suspend fun send(userText: String): ChatResult {
         chatMessageDao.insert(ChatMessage(chat_type = chatType, role = "user", content = userText))
@@ -35,9 +43,10 @@ class ChatRepository(
         val today    = LocalDate.now().toString()
         val todayEntries = foodEntryDao.getByDateOnce(today)
         val todayTotals  = foodEntryDao.getDailyTotals(today)
+        val isTrainingDay = dailyLogDao.getByDateOnce(today)?.is_training_day ?: false
 
         val systemPrompt = if (profile != null)
-            ProfileContextBuilder.build(profile, products, todayEntries, todayTotals)
+            ProfileContextBuilder.build(profile, products, todayEntries, todayTotals, isTrainingDay)
         else
             FALLBACK_PROMPT
 

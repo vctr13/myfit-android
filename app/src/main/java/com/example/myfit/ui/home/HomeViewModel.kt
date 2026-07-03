@@ -1,4 +1,4 @@
-package com.example.myfit.ui.home
+﻿package com.example.myfit.ui.home
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -49,14 +49,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { date -> app.database.workoutDayDao().getTotalCaloriesFlow(date) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    // ── Калории с шагов — реактивно из StepTracker + вес из профиля ──────────
-    val stepCalories: StateFlow<Int> = combine(
-        app.stepTracker.todaySteps,
-        profile
-    ) { steps, p ->
-        val weight = p?.weight_kg ?: 70f
-        (steps * 0.04f * (weight / 70f)).toInt()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    // ── Шаги и их калории — из DailyLog ──────────────────────────────
+    private val _todayLogForSteps: kotlinx.coroutines.flow.StateFlow<com.example.myfit.data.db.entity.DailyLog?> = _dateFlow
+        .flatMapLatest { date -> dailyLogDao.getByDate(date) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val stepCalories: StateFlow<Int> = _todayLogForSteps
+        .map { it?.calories_burned_steps ?: 0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val todaySteps: StateFlow<Int> = _todayLogForSteps
+        .map { it?.steps ?: 0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // ── Тренировочный день ────────────────────────────────────────────────────
     val isTrainingDay: StateFlow<Boolean> = _dateFlow

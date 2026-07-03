@@ -1,4 +1,4 @@
-package com.example.myfit.data.network
+﻿package com.example.myfit.data.network
 
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -40,6 +40,20 @@ data class GeminiResponse(
 data class GeminiCandidate(
     val content: GeminiContent?
 )
+
+// ── Models API ─────────────────────────────────────────────
+
+data class GeminiModelsResponse(
+    val models: List<GeminiModelInfo>?
+)
+
+data class GeminiModelInfo(
+    val name: String,
+    val displayName: String?,
+    val supportedGenerationMethods: List<String>?
+) {
+    val shortName: String get() = name.removePrefix("models/")
+}
 
 // ── Service ────────────────────────────────────────────────
 
@@ -90,6 +104,24 @@ class GeminiService(private val apiKey: String, private val model: String) {
         }
     }
 
+
+    suspend fun fetchModels(): List<GeminiModelInfo> = withContext(Dispatchers.IO) {
+        val url = "https://generativelanguage.googleapis.com/v1beta/models".toHttpUrl()
+            .newBuilder()
+            .addQueryParameter("key", apiKey)
+            .build()
+        val request = Request.Builder().url(url).get().build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string()
+            if (!response.isSuccessful)
+                throw Exception("API ${response.code}: ${body?.take(200) ?: "нет тела"}")
+            gson.fromJson(body, GeminiModelsResponse::class.java)
+                .models
+                .orEmpty()
+                .filter { it.supportedGenerationMethods?.contains("generateContent") == true }
+                .sortedBy { it.shortName }
+        }
+    }
     companion object {
         fun modelUrl(model: String) =
             "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent"

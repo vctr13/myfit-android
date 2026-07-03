@@ -1,4 +1,4 @@
-package com.example.myfit.data.prefs
+﻿package com.example.myfit.data.prefs
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -33,10 +33,24 @@ class SecurePrefs(context: Context) {
         prefs.edit().remove(KEY_API).apply()
     }
 
+    var savedModels: List<String>
+        get() {
+            val raw = prefs.getString(KEY_SAVED_MODELS, "") ?: ""
+            return if (raw.isBlank()) AVAILABLE_MODELS
+                   else raw.split(",").filter { it.isNotBlank() }
+        }
+        set(value) = prefs.edit().putString(KEY_SAVED_MODELS, value.joinToString(",")).apply()
+
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
+
     companion object {
         private const val KEY_API = "gemini_api_key"
         private const val KEY_MODEL = "gemini_model"
         const val DEFAULT_MODEL = "gemini-2.5-flash"
+
+        private const val KEY_SAVED_MODELS = "saved_models"
 
         val AVAILABLE_MODELS = listOf(
             "gemini-2.5-flash",

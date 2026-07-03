@@ -1,4 +1,4 @@
-package com.example.myfit.ui.diet
+﻿package com.example.myfit.ui.diet
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -120,7 +120,7 @@ fun DietScreen(
                     onOpenWaterDialog = { vm.openWaterDialog() },
                     onDeleteEntry = { vm.deleteEntry(it) }
                 )
-                1 -> GoalTab(profile = profile)
+                1 -> GoalTab(profile = profile, isTrainingDay = isTrainingDay)
             }
         }
     }
@@ -276,8 +276,13 @@ private fun TodayTab(
 // ── Вкладка "Цель" ───────────────────────────────────────────
 
 @Composable
-private fun GoalTab(profile: UserProfile?) {
+private fun GoalTab(profile: UserProfile?, isTrainingDay: Boolean) {
     val p = profile ?: return
+
+    val targetKcal  = if (isTrainingDay) p.target_kcal_training  else p.target_kcal
+    val targetFat   = if (isTrainingDay) p.target_fat_g_training   else p.target_fat_g
+    val targetCarbs = if (isTrainingDay) p.target_carbs_g_training else p.target_carbs_g
+    val targetWater = if (isTrainingDay) p.target_water_ml_training else p.target_water_ml
 
     Column(
         modifier = Modifier
@@ -291,7 +296,7 @@ private fun GoalTab(profile: UserProfile?) {
                 Text("Калории", style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
-                Text("${p.target_kcal.roundToInt()} ккал",
+                Text("${targetKcal.roundToInt()} ккал",
                     style = MaterialTheme.typography.displaySmall,
                     color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(6.dp))
@@ -305,9 +310,9 @@ private fun GoalTab(profile: UserProfile?) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             MacroCard("Белки", "${"%.1f".format(p.target_protein_g)} г",
                 ProteinBg, MacroText, Modifier.weight(1f))
-            MacroCard("Жиры", "${"%.1f".format(p.target_fat_g)} г",
+            MacroCard("Жиры", "${"%.1f".format(targetFat)} г",
                 FatBg, MacroText, Modifier.weight(1f))
-            MacroCard("Углеводы", "${"%.1f".format(p.target_carbs_g)} г",
+            MacroCard("Углеводы", "${"%.1f".format(targetCarbs)} г",
                 CarbsBg, MacroText, Modifier.weight(1f))
         }
 
@@ -319,7 +324,7 @@ private fun GoalTab(profile: UserProfile?) {
                 Column {
                     Text("Вода", style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${p.target_water_ml} мл / день",
+                    Text("$targetWater мл / день",
                         style = MaterialTheme.typography.titleMedium)
                 }
             }

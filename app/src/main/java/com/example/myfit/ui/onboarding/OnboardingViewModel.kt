@@ -1,4 +1,4 @@
-package com.example.myfit.ui.onboarding
+﻿package com.example.myfit.ui.onboarding
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -11,13 +11,15 @@ import com.example.myfit.data.db.entity.UserProfile
 import com.example.myfit.data.network.GeminiService
 import com.example.myfit.data.prefs.SecurePrefs
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.Period
 
 class OnboardingViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = MyFitApp.from(application).database
     private val securePrefs = MyFitApp.from(application).securePrefs
 
-    var age by mutableStateOf("")
+    var birthDate by mutableStateOf("")
     var weight by mutableStateOf("")
     var height by mutableStateOf("")
     var gender by mutableStateOf("male")
@@ -37,26 +39,16 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     var formError by mutableStateOf<String?>(null)
         private set
 
-    fun resetKeyStatus() {
-        keyStatus = KeyStatus.Idle
-    }
+    fun resetKeyStatus() { keyStatus = KeyStatus.Idle }
 
     fun verifyApiKey() {
         val key = apiKey.trim()
-        if (key.isBlank()) {
-            keyStatus = KeyStatus.Error("Введите API-ключ")
-            return
-        }
+        if (key.isBlank()) { keyStatus = KeyStatus.Error("Введите API-ключ"); return }
         isCheckingKey = true
         keyStatus = KeyStatus.Idle
         viewModelScope.launch {
             keyStatus = try {
-                // Минимальный чат-запрос без system_instruction для проверки ключа
-                GeminiService(key, selectedModel).chat(
-                    systemPrompt = "You are a helpful assistant.",
-                    history = emptyList(),
-                    userMessage = "Hi"
-                )
+                GeminiService(key, selectedModel).chat("You are a helpful assistant.", emptyList(), "Hi")
                 KeyStatus.Valid
             } catch (e: Exception) {
                 KeyStatus.Error(e.message?.take(200) ?: "Неизвестная ошибка")
@@ -66,41 +58,31 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun save() {
-        val ageInt = age.trim().toIntOrNull()
         val weightFloat = weight.trim().replace(',', '.').toFloatOrNull()
         val heightFloat = height.trim().replace(',', '.').toFloatOrNull()
+        val birthLocalDate = runCatching { LocalDate.parse(birthDate) }.getOrNull()
+        val ageInt = birthLocalDate?.let { Period.between(it, LocalDate.now()).years }
 
-        if (ageInt == null || ageInt !in 10..120) {
-            formError = "Введите корректный возраст (10–120 лет)"
-            return
-        }
-        if (weightFloat == null || weightFloat !in 30f..300f) {
-            formError = "Введите корректный вес (30–300 кг)"
-            return
-        }
-        if (heightFloat == null || heightFloat !in 100f..250f) {
-            formError = "Введите корректный рост (100–250 см)"
-            return
-        }
-        if (keyStatus !is KeyStatus.Valid) {
-            formError = "Сначала проверьте API-ключ (нажмите «Проверить»)"
-            return
+        when {
+            birthLocalDate == null        -> { formError = "Укажите дату рождения"; return }
+            ageInt !in 10..120            -> { formError = "Возраст должен быть от 10 до 120 лет"; return }
+            weightFloat == null || weightFloat !in 30f..300f -> { formError = "Введите корректный вес (30–300 кг)"; return }
+            heightFloat == null || heightFloat !in 100f..250f -> { formError = "Введите корректный рост (100–250 см)"; return }
+            keyStatus !is KeyStatus.Valid -> { formError = "Сначала проверьте API-ключ"; return }
         }
         formError = null
         isSaving = true
-
         viewModelScope.launch {
-            db.userProfileDao().upsert(
-                UserProfile(
-                    age = ageInt,
-                    gender = gender,
-                    height_cm = heightFloat,
-                    weight_kg = weightFloat,
-                    goal = goal,
-                    activity_level = activityLevel,
-                    api_key_set = true
-                )
-            )
+            db.userProfileDao().upsert(UserProfile(
+                age = ageInt!!,
+                birth_date = birthDate,
+                gender = gender,
+                height_cm = heightFloat!!,
+                weight_kg = weightFloat!!,
+                goal = goal,
+                activity_level = activityLevel,
+                api_key_set = true
+            ))
             securePrefs.apiKey = apiKey.trim()
             securePrefs.apiModel = selectedModel
             isSaving = false

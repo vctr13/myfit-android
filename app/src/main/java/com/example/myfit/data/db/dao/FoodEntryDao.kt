@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.dao
+﻿package com.example.myfit.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -51,6 +51,12 @@ interface FoodEntryDao {
     @Query("SELECT DISTINCT date FROM food_entry ORDER BY date DESC")
     fun getDistinctDatesFlow(): Flow<List<String>>
 
+    @Query("DELETE FROM food_entry WHERE date < :cutoff")
+    suspend fun deleteOlderThan(cutoff: String)
+
+    @Query("DELETE FROM food_entry")
+    suspend fun deleteAll()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entry: FoodEntry): Long
 
@@ -63,9 +69,4 @@ interface FoodEntryDao {
     @Query("DELETE FROM food_entry WHERE id = :id")
     suspend fun deleteById(id: Int)
 
-    @Query("DELETE FROM food_entry")
-    suspend fun deleteAll()
-
-    @Query("DELETE FROM food_entry WHERE date < :cutoff")
-    suspend fun deleteOlderThan(cutoff: String)
 }

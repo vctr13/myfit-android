@@ -1,9 +1,12 @@
-package com.example.myfit.ui.onboarding
+﻿package com.example.myfit.ui.onboarding
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,18 +35,24 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZoneOffset
 import com.example.myfit.data.prefs.SecurePrefs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,15 +94,23 @@ fun OnboardingScreen(
             // ── Личные данные ──────────────────────────────────
             Text("Личные данные", style = MaterialTheme.typography.titleMedium)
 
-            OutlinedTextField(
-                value = vm.age,
-                onValueChange = { vm.age = it },
-                label = { Text("Возраст") },
-                suffix = { Text("лет") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
+            BirthDatePicker(
+                birthDate = vm.birthDate,
+                onDateSelected = { vm.birthDate = it },
                 modifier = Modifier.fillMaxWidth()
             )
+            if (vm.birthDate.isNotEmpty()) {
+                val age = runCatching {
+                    Period.between(LocalDate.parse(vm.birthDate), LocalDate.now()).years
+                }.getOrNull()
+                if (age != null) {
+                    Text(
+                        "Возраст: $age лет",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -297,6 +317,72 @@ fun OnboardingScreen(
                 Text("Начать")
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BirthDatePicker(
+    birthDate: String,
+    onDateSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    val displayText = remember(birthDate) {
+        runCatching {
+            val d = LocalDate.parse(birthDate)
+            "%02d.%02d.%d".format(d.dayOfMonth, d.monthValue, d.year)
+        }.getOrDefault("")
+    }
+
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Дата рождения") },
+            placeholder = { Text("выберите дату") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Box(modifier = Modifier
+            .matchParentSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { showPicker = true }
+        )
+    }
+
+    if (showPicker) {
+        val initialMillis = remember(birthDate) {
+            runCatching {
+                LocalDate.parse(birthDate).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            }.getOrElse {
+                LocalDate.now().minusYears(30).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            }
+        }
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            yearRange = IntRange(1924, LocalDate.now().year - 10)
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { millis ->
+                        val date = Instant.ofEpochMilli(millis).atOffset(ZoneOffset.UTC).toLocalDate()
+                        onDateSelected(date.toString())
+                    }
+                    showPicker = false
+                }) { Text("ОК") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Отмена") }
+            }
+        ) {
+            DatePicker(state = pickerState)
         }
     }
 }

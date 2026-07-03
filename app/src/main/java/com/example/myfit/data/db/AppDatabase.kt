@@ -1,4 +1,4 @@
-package com.example.myfit.data.db
+﻿package com.example.myfit.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -41,7 +41,7 @@ import com.example.myfit.data.db.entity.WorkoutTemplate
         ChatMessage::class,
         WeightEntry::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -99,6 +99,12 @@ abstract class AppDatabase : RoomDatabase() {
                         is_builtin INTEGER NOT NULL DEFAULT 0
                     )
                 """.trimIndent())
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_profile ADD COLUMN birth_date TEXT")
             }
         }
 

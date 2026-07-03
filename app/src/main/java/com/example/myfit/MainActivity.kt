@@ -1,4 +1,4 @@
-package com.example.myfit
+﻿package com.example.myfit
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -35,7 +35,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.Main.route) {
-                        MainScreen()
+                        MainScreen(
+                            onResetApp = {
+                                navController.navigate(Screen.Onboarding.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
                     }
                 }
             }

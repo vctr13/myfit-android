@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.dao
+﻿package com.example.myfit.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -12,6 +12,9 @@ interface ChatMessageDao {
 
     @Query("SELECT * FROM chat_message WHERE chat_type = :chatType ORDER BY timestamp ASC")
     fun getMessages(chatType: String): Flow<List<ChatMessage>>
+
+    @Query("SELECT * FROM chat_message WHERE chat_type = :chatType AND timestamp >= :sinceMs ORDER BY timestamp ASC")
+    fun getMessagesFrom(chatType: String, sinceMs: Long): Flow<List<ChatMessage>>
 
     @Query("SELECT * FROM chat_message WHERE chat_type = :chatType ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getRecentMessages(chatType: String, limit: Int = 10): List<ChatMessage>
@@ -27,6 +30,9 @@ interface ChatMessageDao {
 
     @Query("DELETE FROM chat_message")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM chat_message WHERE timestamp < :beforeMs")
+    suspend fun deleteOlderThan(beforeMs: Long)
 
     @Query("""
         DELETE FROM chat_message WHERE id IN (
