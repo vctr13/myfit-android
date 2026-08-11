@@ -33,6 +33,10 @@ class ChatRepository(
         return chatMessageDao.getMessages(chatType)
     }
 
+    fun messagesFrom(sinceMs: Long): Flow<List<ChatMessage>> {
+        return chatMessageDao.getMessagesFrom(chatType, sinceMs)
+    }
+
     suspend fun send(userText: String): ChatResult {
         chatMessageDao.insert(ChatMessage(chat_type = chatType, role = "user", content = userText))
 

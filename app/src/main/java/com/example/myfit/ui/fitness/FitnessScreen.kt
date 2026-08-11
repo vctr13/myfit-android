@@ -175,6 +175,7 @@ fun FitnessScreen(
             }
         )
     }
+    if (vm.finishedSummary != null) FinishedSummaryDialog(vm = vm)
     if (vm.showInfoDialog)       InfoDialog(vm = vm)
     if (vm.showExerciseCatalog)  ExerciseCatalogDialog(vm = vm, exercises = exercises)
     if (vm.showTemplateCatalog)  TemplateCatalogDialog(vm = vm)
@@ -949,6 +950,37 @@ private fun CounterRow(
     }
 }
 
+// ── Finished workout summary dialog ───────────────────────────────────────────
+
+@Composable
+private fun FinishedSummaryDialog(vm: FitnessViewModel) {
+    val summary = vm.finishedSummary ?: return
+
+    AlertDialog(
+        onDismissRequest = { vm.dismissFinishedSummary() },
+        title = { Text("Тренировка завершена") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "${summary.calories} ккал сожжено",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (summary.durationMin != null) {
+                    Text(
+                        "Длительность: ${summary.durationMin} мин",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { vm.dismissFinishedSummary() }) { Text("Ок") }
+        }
+    )
+}
+
 // ── Info dialog ───────────────────────────────────────────────────────────────
 
 @Composable
@@ -1076,17 +1108,18 @@ private fun ExerciseCatalogDialog(vm: FitnessViewModel, exercises: List<Exercise
                                 ) {
                                     Icon(Icons.Outlined.Info, "Описание", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
+                                IconButton(
+                                    onClick  = { vm.openEditExercise(ex) },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(Icons.Filled.Edit, "Редактировать", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
                                 var showMenu by remember { mutableStateOf(false) }
                                 Box {
                                     IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
                                         Icon(Icons.Filled.MoreVert, null, Modifier.size(18.dp))
                                     }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                        DropdownMenuItem(
-                                            text        = { Text("Редактировать") },
-                                            leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                                            onClick     = { vm.openEditExercise(ex); showMenu = false }
-                                        )
                                         DropdownMenuItem(
                                             text        = { Text("Копировать") },
                                             leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
@@ -1288,8 +1321,11 @@ private fun TemplateEditorDialog(vm: FitnessViewModel, exercises: List<Exercise>
                     singleLine    = true,
                     modifier      = Modifier.fillMaxWidth()
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    filteredEx.take(8).forEach { ex ->
+                LazyColumn(
+                    modifier            = Modifier.fillMaxWidth().height(220.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(filteredEx, key = { it.id }) { ex ->
                         Row(
                             modifier          = Modifier
                                 .fillMaxWidth()

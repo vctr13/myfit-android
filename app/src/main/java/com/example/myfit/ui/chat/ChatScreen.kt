@@ -29,10 +29,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import android.widget.Toast
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -87,6 +90,8 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) { vm.refreshDate() }
+
     LaunchedEffect(messages.size, vm.isLoading) {
         val total = messages.size + if (vm.isLoading) 1 else 0
         if (total > 0) scope.launch { listState.animateScrollToItem(total - 1) }
@@ -102,6 +107,9 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { vm.openFactsDialog() }) {
+                        Icon(Icons.Filled.Psychology, contentDescription = "Память бота")
+                    }
                     if (messages.isNotEmpty()) {
                         IconButton(onClick = { vm.clearHistory() }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Очистить историю")
@@ -152,7 +160,7 @@ fun ChatScreen(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         items(messages, key = { it.id }) { msg ->
-                            MessageBubble(msg)
+                            MessageBubble(msg, onSaveToMemory = { vm.openSaveFact(msg) })
                         }
                         if (vm.isLoading) {
                             item(key = "typing") { TypingIndicator() }
@@ -215,6 +223,105 @@ fun ChatScreen(
             }
         }
     }
+
+    if (vm.showSaveFactDialog) SaveFactDialog(vm)
+    if (vm.showFactsDialog)    FactsDialog(vm)
+}
+
+// ── Память бота: сохранение факта ───────────────────────────
+
+@Composable
+private fun SaveFactDialog(vm: ChatViewModel) {
+    AlertDialog(
+        onDismissRequest = { vm.dismissSaveFact() },
+        title = { Text("Добавить в память бота") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "ИИ будет использовать это в других ответах",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = vm.factKeyInput,
+                    onValueChange = { vm.factKeyInput = it },
+                    label = { Text("Название (например: Аллергия)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = vm.factValueInput,
+                    onValueChange = { vm.factValueInput = it },
+                    label = { Text("Текст") },
+                    minLines = 2,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                vm.factError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { vm.confirmSaveFact() }) { Text("Сохранить") }
+        },
+        dismissButton = {
+            TextButton(onClick = { vm.dismissSaveFact() }) { Text("Отмена") }
+        }
+    )
+}
+
+// ── Память бота: просмотр и удаление фактов ─────────────────
+
+@Composable
+private fun FactsDialog(vm: ChatViewModel) {
+    val facts by vm.facts.collectAsState()
+
+    AlertDialog(
+        onDismissRequest = { vm.dismissFactsDialog() },
+        title = { Text("Память бота") },
+        text = {
+            if (facts.isEmpty()) {
+                Text(
+                    "Пока ничего не сохранено. Нажмите значок закладки у любого сообщения в чате, чтобы бот запомнил его.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.height(360.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(facts, key = { it.id }) { fact ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(fact.key, style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    fact.value,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = { vm.deleteFact(fact.key) }) {
+                                Icon(
+                                    Icons.Filled.Delete, null,
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = { vm.dismissFactsDialog() }) { Text("Закрыть") }
+        }
+    )
 }
 
 // ── Food confirm card ──────────────────────────────────────
@@ -349,7 +456,7 @@ private fun FoodConfirmCard(
 // ── Message bubble ─────────────────────────────────────────
 
 @Composable
-private fun MessageBubble(message: ChatMessage) {
+private fun MessageBubble(message: ChatMessage, onSaveToMemory: () -> Unit) {
     val isUser = message.role == "user"
     val bubbleColor = if (isUser) MaterialTheme.colorScheme.tertiaryContainer
                       else MaterialTheme.colorScheme.surfaceVariant
@@ -378,6 +485,16 @@ private fun MessageBubble(message: ChatMessage) {
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    IconButton(
+                        onClick = onSaveToMemory,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.BookmarkAdd,
+                            contentDescription = "Добавить в память бота",
+                            tint = contentColor
+                        )
+                    }
                     IconButton(
                         onClick = {
                             clipboardManager.setText(AnnotatedString(message.content))

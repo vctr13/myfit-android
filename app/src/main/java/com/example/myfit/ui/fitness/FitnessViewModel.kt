@@ -39,6 +39,8 @@ enum class TrainingMode(val label: String, val key: String) {
 
 data class SetLog(val value: Int)
 
+data class WorkoutSummary(val durationMin: Int?, val calories: Int)
+
 data class ActiveExercise(
     val exercise: Exercise,
     val weightKg: Float = 0f,
@@ -122,6 +124,10 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
 
     // ── Confirm-cancel dialog ─────────────────────────────────────────────────
     var showCancelConfirm by mutableStateOf(false)
+        private set
+
+    // ── Итог завершённой тренировки ───────────────────────────────────────────
+    var finishedSummary by mutableStateOf<WorkoutSummary?>(null)
         private set
 
     // ── Rest timer ────────────────────────────────────────────────────────────
@@ -363,13 +369,15 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
             }
 
             val editId = editingWorkoutDayId
+            var finalDurationMin = durationMin
             if (editId != null) {
                 // Обновляем существующую тренировку
                 val existing = workoutDao.getById(editId)
                 if (existing != null) {
+                    finalDurationMin = existing.duration_minutes ?: durationMin
                     workoutDao.update(existing.copy(
                         calories_burned  = totalCalories,
-                        duration_minutes = existing.duration_minutes ?: durationMin
+                        duration_minutes = finalDurationMin
                     ))
                     entryDao.deleteByWorkoutDayId(editId)
                     logged.forEachIndexed { sort, ae ->
@@ -419,9 +427,12 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
 
+            finishedSummary = WorkoutSummary(durationMin = finalDurationMin, calories = totalCalories)
             resetActiveState()
         }
     }
+
+    fun dismissFinishedSummary() { finishedSummary = null }
 
     fun requestCancelWorkout() { showCancelConfirm = true }
     fun dismissCancelConfirm() { showCancelConfirm = false }
