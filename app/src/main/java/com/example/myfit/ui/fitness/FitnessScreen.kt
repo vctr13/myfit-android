@@ -747,24 +747,22 @@ private fun TemplateCatalogDialog(vm: FitnessViewModel) {
                                     )
                                 }
                             }
-                            if (!template.is_builtin) {
-                                var showMenu by remember { mutableStateOf(false) }
-                                Box {
-                                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
-                                        Icon(Icons.Filled.MoreVert, null, Modifier.size(18.dp))
-                                    }
-                                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                        DropdownMenuItem(
-                                            text        = { Text("Редактировать") },
-                                            leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                                            onClick     = { vm.openEditTemplate(template); showMenu = false }
-                                        )
-                                        DropdownMenuItem(
-                                            text        = { Text("Удалить") },
-                                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                                            onClick     = { vm.deleteTemplate(template); showMenu = false }
-                                        )
-                                    }
+                            var showMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Filled.MoreVert, null, Modifier.size(18.dp))
+                                }
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                    DropdownMenuItem(
+                                        text        = { Text("Редактировать") },
+                                        leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                                        onClick     = { vm.openEditTemplate(template); showMenu = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text        = { Text("Удалить") },
+                                        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                                        onClick     = { vm.deleteTemplate(template); showMenu = false }
+                                    )
                                 }
                             }
                         }
@@ -1108,18 +1106,17 @@ private fun ExerciseCatalogDialog(vm: FitnessViewModel, exercises: List<Exercise
                                 ) {
                                     Icon(Icons.Outlined.Info, "Описание", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                IconButton(
-                                    onClick  = { vm.openEditExercise(ex) },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(Icons.Filled.Edit, "Редактировать", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                                }
                                 var showMenu by remember { mutableStateOf(false) }
                                 Box {
                                     IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
                                         Icon(Icons.Filled.MoreVert, null, Modifier.size(18.dp))
                                     }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                        DropdownMenuItem(
+                                            text        = { Text("Редактировать") },
+                                            leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                                            onClick     = { vm.openEditExercise(ex); showMenu = false }
+                                        )
                                         DropdownMenuItem(
                                             text        = { Text("Копировать") },
                                             leadingIcon = { Icon(Icons.Filled.ContentCopy, null) },
