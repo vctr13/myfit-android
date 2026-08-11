@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.entity
+﻿package com.example.myfit.data.db.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -35,5 +35,7 @@ data class WorkoutEntry(
     val reps: Int? = null,
     val duration_sec: Int? = null,
     val weight_kg: Float? = null,
+    val set_values: String? = null,
     val sort_order: Int = 0
 )
+

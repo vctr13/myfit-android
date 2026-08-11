@@ -27,6 +27,9 @@ interface WeightDao {
     @Query("DELETE FROM weight_entry WHERE date < :cutoff")
     suspend fun deleteOlderThan(cutoff: String)
 
+    @Query("SELECT COUNT(*) FROM weight_entry")
+    suspend fun count(): Int
+
     @Query("DELETE FROM weight_entry")
     suspend fun deleteAll()
 }

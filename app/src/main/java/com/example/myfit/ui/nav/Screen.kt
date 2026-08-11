@@ -7,7 +7,6 @@ sealed class Screen(val route: String) {
     data object Fitness : Screen("fitness")
     data object Diet : Screen("diet")
     data object Chat : Screen("chat")
-    data object Pedometer : Screen("pedometer")
     data object Settings : Screen("settings")
     data object MyProducts : Screen("my_products")
     data object Archive : Screen("archive")
@@ -15,4 +14,5 @@ sealed class Screen(val route: String) {
         fun createRoute(date: String) = "day_detail/$date"
         const val ARG = "date"
     }
+    data object WorkoutDiary : Screen("workout_diary")
 }

@@ -15,5 +15,6 @@ data class Exercise(
     val description: String = "",
     val image_url: String? = null,
     val training_mode: String = "both",
-    val is_custom: Boolean = false
+    val is_custom: Boolean = false,
+    val is_time_based: Boolean = false
 )

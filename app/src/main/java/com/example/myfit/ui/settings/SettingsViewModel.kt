@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myfit.MyFitApp
 import com.example.myfit.data.db.entity.UserProfile
+import com.example.myfit.data.db.entity.WeightEntry
 import com.example.myfit.data.network.GeminiService
 import com.example.myfit.data.prefs.SecurePrefs
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +18,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -32,8 +34,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private set
     var savedModels by mutableStateOf(prefs.savedModels)
         private set
+    var timerSound by mutableStateOf(prefs.timerSound)
+        private set
 
-    // Список моделей из API (для выбора чекбоксами)
     var apiModelsList by mutableStateOf<List<String>>(emptyList())
         private set
     var isLoadingModels by mutableStateOf(false)
@@ -103,6 +106,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun selectTimerSound(sound: String) {
+        prefs.timerSound = sound
+        timerSound = sound
+    }
+
     // ── Редактирование профиля ────────────────────────────────
     var showEditProfile by mutableStateOf(false)
         private set
@@ -110,7 +118,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var editGender by mutableStateOf("male")
     var editHeight by mutableStateOf("")
     var editWeight by mutableStateOf("")
-    var editGoal by mutableStateOf("maintain")
+    var editWaist  by mutableStateOf("")
     var editActivity by mutableStateOf(1.55f)
     var editError by mutableStateOf<String?>(null)
 
@@ -120,7 +128,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         editGender = p.gender
         editHeight = p.height_cm.toInt().toString()
         editWeight = "%.1f".format(p.weight_kg)
-        editGoal = p.goal
+        editWaist  = p.waist_cm?.let { "%.1f".format(it) } ?: ""
         editActivity = p.activity_level
         editError = null
         showEditProfile = true
@@ -131,6 +139,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun saveProfile() {
         val height = editHeight.replace(",", ".").toFloatOrNull()
         val weight = editWeight.replace(",", ".").toFloatOrNull()
+        val waist  = editWaist.trim().replace(",", ".").toFloatOrNull()
         val birthLocalDate = runCatching { LocalDate.parse(editBirthDate) }.getOrNull()
         val ageInt = birthLocalDate?.let { Period.between(it, LocalDate.now()).years }
 
@@ -138,11 +147,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             birthLocalDate == null               -> { editError = "Укажите дату рождения"; return }
             ageInt == null || ageInt !in 10..120 -> { editError = "Возраст должен быть 10–120 лет"; return }
             height == null || height !in 100f..250f -> { editError = "Рост: 100–250 см"; return }
-            weight == null || weight !in 20f..300f  -> { editError = "Вес: 20–300 кг"; return }
+            weight == null || weight !in 1f..300f   -> { editError = "Вес: 1–300 кг"; return }
+            waist != null && waist !in 40f..200f    -> { editError = "Обхват талии: 40–200 см"; return }
         }
 
         viewModelScope.launch {
             val current = profile.value
+            val isFirstSetup = current == null
+
             db.userProfileDao().upsert(UserProfile(
                 id = 1,
                 age = ageInt!!,
@@ -151,11 +163,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 height_cm = height!!,
                 weight_kg = weight!!,
                 current_weight_kg = current?.current_weight_kg ?: weight!!,
-                goal = editGoal,
+                waist_cm = waist,
+                goal = current?.goal ?: "maintain",
                 activity_level = editActivity,
                 api_key_set = current?.api_key_set ?: false,
                 created_at = current?.created_at ?: System.currentTimeMillis()
             ))
+
+            // Создаём точку отсчёта графика на дату первого релиза (однократно)
+            val anchorDate = "2026-07-02"
+            if (weight != null && db.weightDao().getByDate(anchorDate) == null) {
+                db.weightDao().insert(WeightEntry(date = anchorDate, weight_kg = weight!!, waist_cm = waist))
+            }
+
             showEditProfile = false
         }
     }

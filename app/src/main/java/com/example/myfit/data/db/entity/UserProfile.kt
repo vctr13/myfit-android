@@ -13,8 +13,9 @@ data class UserProfile(
     val height_cm: Float,
     val weight_kg: Float,
     val current_weight_kg: Float = weight_kg,
-    val goal: String,
+    val goal: String = "maintain",
     val activity_level: Float,
+    val waist_cm: Float? = null,
     val api_key_set: Boolean = false,
     val created_at: Long = System.currentTimeMillis(),
     val birth_date: String? = null                // "YYYY-MM-DD", null у старых пользователей

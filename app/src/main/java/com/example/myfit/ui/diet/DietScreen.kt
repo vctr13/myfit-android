@@ -130,14 +130,19 @@ fun DietScreen(
             onDismissRequest = { vm.dismissWaterDialog() },
             title = { Text("Своё количество") },
             text = {
-                OutlinedTextField(
-                    value = vm.waterInput,
-                    onValueChange = { vm.waterInput = it },
-                    label = { Text("мл") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column {
+                    OutlinedTextField(
+                        value = vm.waterInput,
+                        onValueChange = { vm.waterInput = it },
+                        label = { Text("мл") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    vm.waterError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             },
             confirmButton = {
                 TextButton(onClick = { vm.confirmWaterDialog() }) { Text("Добавить") }
@@ -244,8 +249,14 @@ private fun TodayTab(
                             HorizontalDivider(Modifier.padding(vertical = 6.dp))
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(entry.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        if (entry.water_ml == 0f && entry.grams_g > 0f)
+                                            "${entry.name} — ${entry.grams_g.roundToInt()} гр"
+                                        else entry.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
                                     val parts = buildList {
+                                        if (entry.time.isNotBlank()) add(entry.time)
                                         if (entry.calories > 0) add("${entry.calories.roundToInt()} ккал")
                                         if (entry.protein > 0) add("Б:${"%.1f".format(entry.protein)}г")
                                         if (entry.fat > 0) add("Ж:${"%.1f".format(entry.fat)}г")
@@ -446,3 +457,4 @@ private fun SubValue(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodySmall)
     }
 }
+

@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.entity
+﻿package com.example.myfit.data.db.entity
 
 import androidx.room.Entity
 import androidx.room.Index
@@ -12,5 +12,7 @@ data class WeightEntry(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val date: String,
     val weight_kg: Float,
+    val waist_cm: Float? = null,
     val created_at: Long = System.currentTimeMillis()
 )
+

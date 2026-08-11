@@ -1,4 +1,4 @@
-package com.example.myfit.ui.fitness
+﻿package com.example.myfit.ui.fitness
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -34,9 +34,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Info
@@ -53,8 +55,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -78,9 +82,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myfit.data.db.entity.Exercise
 import com.example.myfit.data.db.entity.WorkoutDay
 import com.example.myfit.data.db.entity.WorkoutTemplate
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -93,7 +94,6 @@ fun FitnessScreen(
     LaunchedEffect(Unit) { vm.refreshDate() }
 
     val exercises      by vm.exercises.collectAsState()
-    val recentWorkouts by vm.recentWorkouts.collectAsState()
     val todayWorkouts  by vm.todayWorkouts.collectAsState()
     val showReminder   by vm.showReminder.collectAsState()
 
@@ -108,8 +108,21 @@ fun FitnessScreen(
                 },
                 actions = {
                     if (!vm.isWorkoutActive) {
-                        IconButton(onClick = { vm.openExerciseCatalog() }) {
-                            Icon(Icons.Outlined.FitnessCenter, contentDescription = "Каталог упражнений")
+                        var showCatalogMenu by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showCatalogMenu = true }) {
+                                Icon(Icons.Outlined.FitnessCenter, contentDescription = "Каталоги")
+                            }
+                            DropdownMenu(expanded = showCatalogMenu, onDismissRequest = { showCatalogMenu = false }) {
+                                DropdownMenuItem(
+                                    text    = { Text("Каталог упражнений") },
+                                    onClick = { showCatalogMenu = false; vm.openExerciseCatalog() }
+                                )
+                                DropdownMenuItem(
+                                    text    = { Text("Каталог комплексов") },
+                                    onClick = { showCatalogMenu = false; vm.openTemplateCatalog() }
+                                )
+                            }
                         }
                     }
                 }
@@ -136,7 +149,7 @@ fun FitnessScreen(
             if (vm.isWorkoutActive) {
                 ActiveWorkoutContent(vm = vm)
             } else {
-                IdleContent(vm = vm, todayWorkouts = todayWorkouts, recentWorkouts = recentWorkouts)
+                IdleContent(vm = vm, todayWorkouts = todayWorkouts)
             }
         }
     }
@@ -164,6 +177,7 @@ fun FitnessScreen(
     }
     if (vm.showInfoDialog)       InfoDialog(vm = vm)
     if (vm.showExerciseCatalog)  ExerciseCatalogDialog(vm = vm, exercises = exercises)
+    if (vm.showTemplateCatalog)  TemplateCatalogDialog(vm = vm)
     if (vm.showExerciseEditor)   ExerciseEditorDialog(vm = vm)
     if (vm.showTemplateEditor)   TemplateEditorDialog(vm = vm, exercises = exercises)
 }
@@ -220,12 +234,9 @@ private fun MonthlyReminderBanner(onDismiss: () -> Unit) {
 @Composable
 private fun IdleContent(
     vm: FitnessViewModel,
-    todayWorkouts: List<WorkoutDay>,
-    recentWorkouts: List<WorkoutDay>
+    todayWorkouts: List<WorkoutDay>
 ) {
-    val today     = LocalDate.now().toString()
     val todayDone = todayWorkouts.filter { it.is_completed }
-    val history   = recentWorkouts.filter { it.date != today }
 
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
@@ -251,6 +262,9 @@ private fun IdleContent(
                                     style    = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f)
                                 )
+                                TextButton(onClick = { vm.resumeWorkout(wd) }) {
+                                    Text("Изменить", style = MaterialTheme.typography.labelSmall)
+                                }
                                 IconButton(onClick = { vm.deleteWorkoutDay(wd) }) {
                                     Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
                                 }
@@ -287,17 +301,8 @@ private fun IdleContent(
             }
         }
 
-        if (history.isNotEmpty()) {
-            item {
-                Text(
-                    "Последние тренировки",
-                    style    = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            items(history, key = { it.id }) { wd ->
-                HistoryCard(wd = wd, onDelete = { vm.deleteWorkoutDay(wd) })
-            }
+        item {
+            StepsInputCard(vm = vm)
         }
 
         item { Spacer(Modifier.height(80.dp)) }
@@ -305,22 +310,35 @@ private fun IdleContent(
 }
 
 @Composable
-private fun HistoryCard(wd: WorkoutDay, onDelete: () -> Unit) {
+private fun StepsInputCard(vm: FitnessViewModel) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier          = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(wd.label ?: "Тренировка", style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    formatWorkoutDate(wd.date),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Text("Шаги за день", style = MaterialTheme.typography.titleSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = vm.stepsInput,
+                    onValueChange = { vm.onStepsInputChange(it) },
+                    placeholder = { Text("0") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
                 )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
+                if (vm.stepsSaved) {
+                    Text(
+                        "Сохранено ✓",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Button(onClick = { vm.saveSteps() }) { Text("Сохранить") }
+                }
             }
         }
     }
@@ -336,31 +354,55 @@ private fun ActiveWorkoutContent(vm: FitnessViewModel) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            Row(
-                modifier          = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        if (vm.trainingMode == TrainingMode.HOME) "Домашняя тренировка" else "Тренировка в зале",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    val done = vm.activeExercises.count { it.sets.isNotEmpty() }
-                    Text(
-                        "$done / ${vm.activeExercises.size} упражнений",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Button(onClick = { vm.finishWorkout() }) { Text("Завершить") }
-                    TextButton(onClick = { vm.requestCancelWorkout() }) {
-                        Text("Отмена", color = MaterialTheme.colorScheme.error)
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (vm.trainingMode == TrainingMode.HOME) "Домашняя тренировка" else "Тренировка в зале",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        val done = vm.activeExercises.count { it.sets.isNotEmpty() }
+                        Text(
+                            "$done / ${vm.activeExercises.size} упражнений",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (!vm.workoutStarted) {
+                            Text(
+                                text  = "Нажмите «Начать» для записи времени",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (!vm.workoutStarted) {
+                            Button(
+                                onClick = { vm.startTiming() },
+                                colors  = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary,
+                                    contentColor   = MaterialTheme.colorScheme.onTertiary
+                                )
+                            ) {
+                                Icon(Icons.Filled.PlayArrow, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Начать")
+                            }
+                        } else {
+                            Button(onClick = { vm.finishWorkout() }) { Text("Завершить") }
+                        }
+                        TextButton(onClick = { vm.requestCancelWorkout() }) {
+                            Text("Отмена", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(8.dp))
+                RestTimerRow(vm = vm)
             }
         }
 
@@ -389,6 +431,66 @@ private fun ActiveWorkoutContent(vm: FitnessViewModel) {
     }
 }
 
+// ── Rest timer row ────────────────────────────────────────────────────────────
+
+@Composable
+private fun RestTimerRow(vm: FitnessViewModel) {
+    val timerColor = if (vm.restTimerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier              = Modifier.fillMaxWidth(),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(Icons.Filled.Timer, null, Modifier.size(18.dp), tint = timerColor)
+        Text(
+            if (vm.restTimerRunning) formatTimerSec(vm.restTimerLeft) else formatTimerSec(vm.restTimerSec),
+            style = MaterialTheme.typography.titleSmall,
+            color = timerColor,
+            modifier = Modifier.width(52.dp)
+        )
+        // Quick presets
+        listOf(60, 90, 120).forEach { s ->
+            Surface(
+                shape  = MaterialTheme.shapes.small,
+                color  = if (!vm.restTimerRunning && vm.restTimerSec == s)
+                    MaterialTheme.colorScheme.tertiaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier
+                    .clickable { if (!vm.restTimerRunning) vm.restTimerSec = s }
+            ) {
+                Text(
+                    "${s}с",
+                    style    = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                    color    = if (!vm.restTimerRunning && vm.restTimerSec == s)
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        FilledTonalIconButton(
+            onClick  = { vm.toggleRestTimer() },
+            modifier = Modifier.size(34.dp),
+            shape    = MaterialTheme.shapes.small
+        ) {
+            Icon(
+                if (vm.restTimerRunning) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                contentDescription = if (vm.restTimerRunning) "Стоп" else "Старт",
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+private fun formatTimerSec(sec: Int): String {
+    val m = sec / 60
+    val s = sec % 60
+    return "%d:%02d".format(m, s)
+}
+
 // ── Exercise log card ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -399,7 +501,7 @@ private fun ExerciseLogCard(ae: ActiveExercise, index: Int, vm: FitnessViewModel
             modifier            = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Header: name + muscles | [i] [×]
+            // Header: name + muscles + prevResult | [i] [×]
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(ae.exercise.name, style = MaterialTheme.typography.titleSmall)
@@ -408,6 +510,13 @@ private fun ExerciseLogCard(ae: ActiveExercise, index: Int, vm: FitnessViewModel
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (ae.prevResult != null) {
+                        Text(
+                            ae.prevResult,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                 }
                 IconButton(
                     onClick  = { vm.openInfoDialog(ae.exercise) },
@@ -462,7 +571,7 @@ private fun ExerciseLogCard(ae: ActiveExercise, index: Int, vm: FitnessViewModel
                     }
                 }
 
-                // Mode chip
+                // Mode indicator (fixed per exercise, set in "Каталог упражнений")
                 Surface(
                     shape    = RoundedCornerShape(10.dp),
                     color    = MaterialTheme.colorScheme.surface,
@@ -470,9 +579,7 @@ private fun ExerciseLogCard(ae: ActiveExercise, index: Int, vm: FitnessViewModel
                     modifier = Modifier.height(32.dp)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .clickable { vm.toggleMode(index) }
-                            .padding(horizontal = 10.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (ae.isTimeBased) {
@@ -536,22 +643,71 @@ private fun ExerciseLogCard(ae: ActiveExercise, index: Int, vm: FitnessViewModel
 
 // ── Template picker dialog ────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TemplatePickerDialog(vm: FitnessViewModel) {
     val allTemplates by vm.templates.collectAsState()
-    val modeKey      = vm.trainingMode.key
+    val modeKey       = vm.trainingMode.key
     val modeTemplates = allTemplates.filter { it.mode == modeKey || it.mode == "both" }
 
     AlertDialog(
         onDismissRequest = { vm.dismissTemplateSheet() },
+        title   = { Text("Выбери тренировку") },
+        text    = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(modeTemplates, key = { it.id }) { template ->
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { vm.startFromTemplate(template) }
+                                .padding(12.dp)
+                        ) {
+                            Text(template.name, style = MaterialTheme.typography.titleSmall)
+                            if (template.description.isNotBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(template.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            val names = template.exerciseNameList()
+                            if (names.isNotEmpty()) {
+                                Text(
+                                    names.joinToString(" · "),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    OutlinedButton(
+                        onClick  = { vm.startCustomWorkout() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Своя тренировка") }
+                }
+            }
+        },
+        confirmButton  = {},
+        dismissButton  = {
+            TextButton(onClick = { vm.dismissTemplateSheet() }) { Text("Отмена") }
+        }
+    )
+}
+
+// ── Template catalog dialog (управление комплексами) ─────────────────────────
+
+@Composable
+private fun TemplateCatalogDialog(vm: FitnessViewModel) {
+    val allTemplates by vm.templates.collectAsState()
+
+    AlertDialog(
+        onDismissRequest = { vm.dismissTemplateCatalog() },
         title   = {
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text("Выбери тренировку")
+                Text("Каталог комплексов")
                 FilledTonalIconButton(
                     onClick  = { vm.openCreateTemplate() },
                     modifier = Modifier.size(36.dp),
@@ -565,14 +721,14 @@ private fun TemplatePickerDialog(vm: FitnessViewModel) {
             }
         },
         text    = {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(modeTemplates, key = { it.id }) { template ->
+            LazyColumn(
+                modifier = Modifier.height(400.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(allTemplates, key = { it.id }) { template ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            modifier          = Modifier
-                                .fillMaxWidth()
-                                .clickable { vm.startFromTemplate(template) }
-                                .padding(12.dp),
+                            modifier          = Modifier.fillMaxWidth().padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -613,17 +769,11 @@ private fun TemplatePickerDialog(vm: FitnessViewModel) {
                         }
                     }
                 }
-                item {
-                    OutlinedButton(
-                        onClick  = { vm.startCustomWorkout() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Своя тренировка") }
-                }
             }
         },
         confirmButton  = {},
         dismissButton  = {
-            TextButton(onClick = { vm.dismissTemplateSheet() }) { Text("Отмена") }
+            TextButton(onClick = { vm.dismissTemplateCatalog() }) { Text("Закрыть") }
         }
     )
 }
@@ -705,12 +855,36 @@ private fun AddSetDialog(vm: FitnessViewModel) {
         onDismissRequest = { vm.dismissAddSetDialog() },
         title   = { Text("Подход $setNum · $exName") },
         text    = {
-            CounterRow(
-                label       = if (timeBased) "Секунды" else "Повторения",
-                value       = if (timeBased) "${vm.addSetValue} с" else "${vm.addSetValue}",
-                onDecrement = { vm.decrementSetValue() },
-                onIncrement = { vm.incrementSetValue() }
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CounterRow(
+                    label       = if (timeBased) "Секунды" else "Повторения",
+                    value       = if (timeBased) "${vm.addSetValue} с" else "${vm.addSetValue}",
+                    onDecrement = { vm.decrementSetValue() },
+                    onIncrement = { vm.incrementSetValue() }
+                )
+                if (timeBased) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier              = Modifier.fillMaxWidth()
+                    ) {
+                        listOf(30, 45, 60) .forEach { s ->
+                            Surface(
+                                shape    = MaterialTheme.shapes.small,
+                                color    = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier
+                                    .clickable { vm.addSetValue = s }
+                            ) {
+                                Text(
+                                    "${s}с",
+                                    style    = MaterialTheme.typography.labelMedium,
+                                    color    = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         confirmButton  = {
             Button(onClick = { vm.confirmAddSet() }) { Text("Записать") }
@@ -991,6 +1165,20 @@ private fun ExerciseEditorDialog(vm: FitnessViewModel) {
                     }
                 }
 
+                Text("Тип выполнения:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                listOf(
+                    false to "Повторения",
+                    true  to "Секунды"
+                ).forEach { (value, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier          = Modifier.fillMaxWidth().clickable { vm.editorIsTimeBased = value }
+                    ) {
+                        RadioButton(selected = vm.editorIsTimeBased == value, onClick = { vm.editorIsTimeBased = value })
+                        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
+
                 vm.editorError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -1147,9 +1335,3 @@ private fun normalizeMuscle(raw: String): String = when {
         raw.contains("TVA") || raw.contains("поясн")  -> "Пресс / Кор"
     else                                               -> "Другое"
 }
-
-private fun formatWorkoutDate(iso: String): String = try {
-    val d   = LocalDate.parse(iso)
-    val fmt = DateTimeFormatter.ofPattern("d MMMM", Locale.forLanguageTag("ru"))
-    d.format(fmt)
-} catch (e: Exception) { iso }

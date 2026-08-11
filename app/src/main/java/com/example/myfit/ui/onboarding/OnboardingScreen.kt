@@ -152,25 +152,6 @@ fun OnboardingScreen(
             // ── Цели ───────────────────────────────────────────
             Text("Цели", style = MaterialTheme.typography.titleMedium)
 
-            Text("Задача", style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = vm.goal == "loss",
-                    onClick = { vm.goal = "loss" },
-                    label = { Text("Похудение") }
-                )
-                FilterChip(
-                    selected = vm.goal == "gain",
-                    onClick = { vm.goal = "gain" },
-                    label = { Text("Набор массы") }
-                )
-                FilterChip(
-                    selected = vm.goal == "maintain",
-                    onClick = { vm.goal = "maintain" },
-                    label = { Text("Поддержание") }
-                )
-            }
-
             ExposedDropdownMenuBox(
                 expanded = activityExpanded,
                 onExpandedChange = { activityExpanded = !activityExpanded }

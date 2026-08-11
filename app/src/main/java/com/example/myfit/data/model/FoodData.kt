@@ -1,4 +1,4 @@
-package com.example.myfit.data.model
+﻿package com.example.myfit.data.model
 
 import com.google.gson.annotations.SerializedName
 
@@ -15,7 +15,8 @@ data class ParsedFoodItem(
     val fat: Float,
     val carbs: Float,
     val fiber: Float = 0f,
-    @SerializedName("amount_g") val amountG: Float
+    @SerializedName("amount_g") val amountG: Float,
+    @SerializedName("water_ml") val waterMl: Float = 0f
 )
 
 data class ChatResult(

@@ -18,3 +18,7 @@ Thumbs.db
 local.properties
 .kotlin/
 app/release/
+
+# Личные заметки и учётные данные — не для репозитория
+/fit/
+fix_github_release.py

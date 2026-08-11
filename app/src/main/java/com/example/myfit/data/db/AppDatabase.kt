@@ -41,7 +41,7 @@ import com.example.myfit.data.db.entity.WorkoutTemplate
         ChatMessage::class,
         WeightEntry::class
     ],
-    version = 8,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -108,6 +108,36 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE food_entry ADD COLUMN grams_g REAL NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE weight_entry ADD COLUMN waist_cm REAL")
+                db.execSQL("ALTER TABLE workout_day ADD COLUMN duration_minutes INTEGER")
+                db.execSQL("ALTER TABLE workout_entry ADD COLUMN set_values TEXT")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_profile ADD COLUMN waist_cm REAL")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise ADD COLUMN is_time_based INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "UPDATE exercise SET is_time_based = 1 WHERE name IN " +
+                    "('Планка прямая', 'Боковая планка', 'Вакуум', 'Лодочка')"
+                )
+            }
+        }
+
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("PRAGMA foreign_keys = OFF")
@@ -135,3 +165,5 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
+
+

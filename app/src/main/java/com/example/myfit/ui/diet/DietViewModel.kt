@@ -68,6 +68,8 @@ class DietViewModel(application: Application) : AndroidViewModel(application) {
     var showWaterDialog by mutableStateOf(false)
         private set
     var waterInput by mutableStateOf("")
+    var waterError by mutableStateOf<String?>(null)
+        private set
 
     fun addWater(ml: Int) {
         val timeStr = LocalTime.now().toString().take(5)
@@ -80,11 +82,13 @@ class DietViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openWaterDialog() { waterInput = ""; showWaterDialog = true }
+    fun openWaterDialog() { waterInput = ""; waterError = null; showWaterDialog = true }
     fun dismissWaterDialog() { showWaterDialog = false }
     fun confirmWaterDialog() {
-        val ml = waterInput.toIntOrNull() ?: return
-        if (ml > 0) addWater(ml)
+        val ml = waterInput.toIntOrNull()
+        if (ml == null || ml <= 0) { waterError = "Введите количество мл больше 0"; return }
+        waterError = null
+        addWater(ml)
         showWaterDialog = false
     }
 

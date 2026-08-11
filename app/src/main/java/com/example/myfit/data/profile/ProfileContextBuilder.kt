@@ -2,6 +2,7 @@
 
 import com.example.myfit.data.db.entity.FoodEntry
 import com.example.myfit.data.db.entity.Product
+import com.example.myfit.data.db.entity.UserFacts
 import com.example.myfit.data.db.entity.UserProfile
 import com.example.myfit.data.db.model.DailyNutrition
 import java.time.LocalDate
@@ -16,7 +17,8 @@ object ProfileContextBuilder {
         products: List<Product> = emptyList(),
         todayEntries: List<FoodEntry> = emptyList(),
         todayTotals: DailyNutrition? = null,
-        isTrainingDay: Boolean = false
+        isTrainingDay: Boolean = false,
+        userFacts: List<UserFacts> = emptyList()
     ): String = buildString {
         val today = LocalDate.now()
         val todayIso = today.toString()
@@ -39,9 +41,20 @@ object ProfileContextBuilder {
         } else {
             appendLine("• Вес: $currentWt кг")
         }
-        appendLine("• Цель: ${goalLabel(profile.goal)}")
         appendLine("• Уровень активности: ${activityLabel(profile.activity_level)}")
         appendLine()
+
+        if (userFacts.isNotEmpty()) {
+            appendLine("Дополнительные факты о пользователе (отдельная память):")
+            userFacts.forEach { fact ->
+                appendLine("• ${fact.key}: ${fact.value}")
+            }
+            appendLine()
+            appendLine("ПРИМЕЧАНИЕ: эти факты хранятся отдельно от истории чата и должны использоваться как постоянная память пользователя.")
+            appendLine("Игнорируй историю переписки как источник долгосрочных данных.")
+            appendLine()
+        }
+
         val targetKcal   = if (isTrainingDay) profile.target_kcal_training   else profile.target_kcal
         val targetProtein = profile.target_protein_g
         val targetFat    = if (isTrainingDay) profile.target_fat_g_training   else profile.target_fat_g
@@ -105,8 +118,8 @@ object ProfileContextBuilder {
         if (products.isNotEmpty()) {
             appendLine("Сохранённые продукты пользователя (значения на 1 единицу/порцию):")
             products.forEach { p ->
-                val fiber = if ((p.fiber ?: 0f) > 0) ", Кл:${p.fiber!!.roundToInt()}г" else ""
-                appendLine("• ${p.name}: ${p.calories.roundToInt()} ккал, Б:${p.protein.roundToInt()}г, Ж:${p.fat.roundToInt()}г, У:${p.carbs.roundToInt()}г$fiber")
+                val fiber = if ((p.fiber ?: 0f) > 0) ", Кл:${"%.1f".format(p.fiber!!)}г" else ""
+                appendLine("• ${p.name}: ${p.calories.roundToInt()} ккал, Б:${"%.1f".format(p.protein)}г, Ж:${"%.1f".format(p.fat)}г, У:${"%.1f".format(p.carbs)}г$fiber")
             }
             appendLine("ВАЖНО: при упоминании этих продуктов используй ТОЧНО эти значения КЖБУ, умножай на количество единиц.")
             appendLine()
@@ -115,35 +128,44 @@ object ProfileContextBuilder {
         appendLine("Инструкция по журналу питания:")
         appendLine("Если пользователь СООБЩАЕТ О ФАКТЕ приёма пищи или воды (не спрашивает совета, а именно говорит что съел/выпил),")
         appendLine("добавь в самый конец ответа блок (без пробелов перед скобками):")
-        appendLine("[FOOD_DATA]{\"items\":[{\"name\":\"Название\",\"amount_g\":0,\"kcal\":0,\"protein\":0,\"fat\":0,\"carbs\":0,\"fiber\":0}],\"water_ml\":0,\"date\":null}[/FOOD_DATA]")
-        appendLine("Правила блока [FOOD_DATA]:")
-        appendLine("• ДАТА ЗАПИСИ (поле date):")
+        appendLine("[FOOD_DATA]{\"items\":[{\"name\":\"Название\",\"amount_g\":0,\"kcal\":0,\"protein\":0,\"fat\":0,\"carbs\":0,\"fiber\":0,\"water_ml\":0}],\"water_ml\":0,\"date\":null}[/FOOD_DATA]")
+        appendLine()
+        appendLine("СХЕМА ПОЛЕЙ — ЧИТАЙ ВНИМАТЕЛЬНО:")
+        appendLine()
+        appendLine("1. items[] — еда и блюда (каша, мясо, рыба, овощи, фрукты, молочные продукты).")
+        appendLine("   amount_g — вес порции в ГРАММАХ (целое число).")
+        appendLine("   kcal/protein/fat/carbs/fiber — питательная ценность по данным USDA.")
+        appendLine("   water_ml ВНУТРИ items[] — содержание воды В ЭТОМ ПРОДУКТЕ (данные USDA):")
+        appendLine("   ПРАВИЛО: если продукт содержит ≥70% воды — рассчитай water_ml = amount_g × (% воды ÷ 100).")
+        appendLine("   Примерные проценты воды по категориям:")
+        appendLine("   Овощи:  огурец 96%, сельдерей/салат 95%, помидор/кабачок 94%, капуста/перец 92%, шпинат/брокколи 91%, морковь 88%")
+        appendLine("   Фрукты: арбуз/клубника/дыня 91%, грейпфрут 91%, апельсин/слива/персик 87–89%, яблоко/груша 84–86%, манго 83%, виноград 81%, банан 74%")
+        appendLine("   Молочные: кефир 88%, молоко 87%, йогурт 83%, творог нежирный 79%, творог жирный 70%")
+        appendLine("   Прочее: яйцо 75%, картофель варёный 77%, рыба варёная 70%")
+        appendLine("   Мясо, хлеб, крупы, макароны, сыр — water_ml: 0  (менее 70%, несущественно)")
+        appendLine("   Если процент воды неизвестен — ставь 0.")
+        appendLine()
+        appendLine("2. water_ml ВЕРХНЕГО УРОВНЯ — ТОЛЬКО чистые напитки без КЖБУ:")
+        appendLine("   вода, чай, кофе, сок, компот, минералка.")
+        appendLine("   • Чай и кофе × 0.80: кружка чая 300мл → water_ml: 240")
+        appendLine("   • Вода, сок — 1:1: 200мл воды → water_ml: 200")
+        appendLine("   • НЕ дублируй молоко, кефир, йогурт здесь — их вода уже в items[].water_ml")
+        appendLine()
+        appendLine("ДАТА ЗАПИСИ (поле date):")
         appendLine("  - ПРАВИЛО ПО УМОЛЧАНИЮ: всегда ставь date: null. Это означает «сегодня» ($todayIso).")
         appendLine("  - Единственное исключение: пользователь явно написал слово «вчера» или конкретную дату в ПОСЛЕДНЕМ сообщении.")
         appendLine("    Только тогда ставь date: \"YYYY-MM-DD\" (например, date: \"$yesterday\").")
         appendLine("  - Если дата неясна — СПРОСИ: «Это было сегодня ($todayIso) или в другой день?»")
         appendLine("    и НЕ добавляй блок [FOOD_DATA] до получения ответа.")
         appendLine("  - НИКОГДА не угадывай и не выводи дату самостоятельно. При сомнении — date: null.")
-        appendLine("• КРИТИЧНО: включай в блок ТОЛЬКО продукты из ПОСЛЕДНЕГО сообщения пользователя.")
-        appendLine("• НЕ включай еду из предыдущих сообщений, из истории дня или из своих пересказов.")
-        appendLine("• items[] — ТОЛЬКО твёрдая еда и блюда (каша, мясо, овощи, фрукты и т.д.).")
-        appendLine("  amount_g — вес еды в ГРАММАХ (целое число, например 180).")
-        appendLine("• ВОДА и НАПИТКИ (вода, чай, кофе, сок, молоко) — ТОЛЬКО в поле water_ml.")
-        appendLine("  НЕ добавляй воду/напитки в items[]. Никогда.")
-        appendLine("  water_ml — объём в миллилитрах (например, 200 мл воды → water_ml: 200).")
-        appendLine("• Используй данные USDA для ккал/БЖУ на указанный вес.")
+        appendLine()
+        appendLine("ДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА:")
+        appendLine("• Включай в блок ТОЛЬКО продукты из ПОСЛЕДНЕГО сообщения пользователя.")
+        appendLine("• НЕ включай еду из предыдущих сообщений, истории дня или своих пересказов.")
         appendLine("• Если пользователь не указал вес — оцени типичную порцию.")
         appendLine("• fiber = 0 если клетчатка неизвестна.")
-        appendLine("• Если только вода/напитки без еды — items = [].")
-        appendLine("• Если еды и воды нет — НЕ добавляй блок [FOOD_DATA] вообще.")
-        appendLine()
-        appendLine("Правила гидратации (основаны на данных EFSA 2022, BDA, USDA):")
-        appendLine("• Чай и кофе НЕ засчитываются как 100% воды. Используй коэффициент 0.80:")
-        appendLine("  1 мл чая или кофе = 0.80 мл эффективной воды.")
-        appendLine("  Пример: кружка чая 300 мл → 240 мл в водный баланс.")
-        appendLine("• Арбуз содержит 91% воды по массе (USDA):")
-        appendLine("  граммы × 0.91 = мл воды. Порция 200 г → 182 мл в водный баланс.")
-        appendLine("• Остальные фрукты и овощи также содержат воду — учитывай при расчёте.")
+        appendLine("• Если только напитки без еды — items = [].")
+        appendLine("• Если нет ни еды, ни воды — НЕ добавляй блок [FOOD_DATA] вообще.")
         appendLine()
         appendLine("Правила ответа:")
         appendLine("1. Отвечай только на русском языке.")
@@ -151,13 +173,6 @@ object ProfileContextBuilder {
         appendLine("3. Советы должны соответствовать профилю пользователя выше.")
         appendLine("4. Будь конкретным и практичным. Избегай общих фраз.")
         appendLine("5. Если вопрос не о питании или фитнесе, мягко перенаправь разговор.")
-    }
-
-    private fun goalLabel(goal: String) = when (goal) {
-        "loss"     -> "снижение веса"
-        "gain"     -> "набор мышечной массы"
-        "maintain" -> "поддержание веса"
-        else       -> goal
     }
 
     private fun activityLabel(level: Float) = when {

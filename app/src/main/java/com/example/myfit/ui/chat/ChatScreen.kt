@@ -27,7 +27,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import android.widget.Toast
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
@@ -56,6 +59,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +72,7 @@ import com.example.myfit.data.db.entity.ChatMessage
 import com.example.myfit.data.model.ParsedFoodData
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -223,7 +231,17 @@ private fun FoodConfirmCard(
         "ужин"    to "Ужин",
         "перекус" to "Перекус"
     )
-    var selectedMeal by remember { mutableStateOf("обед") }
+    var selectedMeal by remember {
+        val h = LocalTime.now().hour
+        val m = LocalTime.now().minute
+        val auto = when {
+            h in 6..10               -> "завтрак"
+            h in 11..14 || (h == 15 && m == 0) -> "обед"
+            h in 18..20              -> "ужин"
+            else                     -> "перекус"
+        }
+        mutableStateOf(auto)
+    }
 
     val today = LocalDate.now().toString()
     val entryDate = foodData.date?.takeIf { it.isNotBlank() && it != today }
@@ -342,6 +360,9 @@ private fun MessageBubble(message: ChatMessage) {
     else
         RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
 
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -352,21 +373,43 @@ private fun MessageBubble(message: ChatMessage) {
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Surface(color = bubbleColor, shape = bubbleShape) {
-            if (isUser) {
-                Text(
-                    text = message.content,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor
-                )
-            } else {
-                MarkdownText(
-                    markdown = message.content,
-                    modifier = Modifier
-                        .widthIn(max = 320.dp)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    color = contentColor
-                )
+            Column(modifier = Modifier.widthIn(max = 320.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(message.content))
+                            Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = "Скопировать текст",
+                            tint = contentColor
+                        )
+                    }
+                }
+                if (isUser) {
+                    Text(
+                        text = message.content,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor
+                    )
+                } else {
+                    SelectionContainer {
+                        MarkdownText(
+                            markdown = message.content,
+                            modifier = Modifier
+                                .widthIn(max = 320.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            color = contentColor
+                        )
+                    }
+                }
             }
         }
     }
@@ -435,3 +478,4 @@ private fun EmptyState() {
         }
     }
 }
+

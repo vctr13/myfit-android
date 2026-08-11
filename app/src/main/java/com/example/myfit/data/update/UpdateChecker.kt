@@ -9,8 +9,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
-private const val RELEASES_URL =
+private const val LATEST_RELEASE_URL =
     "https://api.github.com/repos/vctr13/myfit-android/releases/latest"
+private const val RELEASES_URL =
+    "https://api.github.com/repos/vctr13/myfit-android/releases"
 
 object UpdateChecker {
 
@@ -21,20 +23,41 @@ object UpdateChecker {
 
     suspend fun fetchLatestRelease(): ReleaseInfo? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
+            .url(LATEST_RELEASE_URL)
+            .header("Accept", "application/vnd.github.v3+json")
+            .build()
+        val body = client.newCall(request).execute().use { it.body?.string() }
+            ?: return@withContext null
+        parseRelease(body)
+    }
+
+    suspend fun fetchRecentReleases(limit: Int = 5): List<ReleaseInfo>? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
             .url(RELEASES_URL)
             .header("Accept", "application/vnd.github.v3+json")
             .build()
         val body = client.newCall(request).execute().use { it.body?.string() }
             ?: return@withContext null
+        val array = JsonParser.parseString(body).asJsonArray
+        array.mapNotNull { element ->
+            try {
+                parseRelease(element.asJsonObject.toString())
+            } catch (_: Exception) {
+                null
+            }
+        }.take(limit)
+    }
+
+    private fun parseRelease(body: String): ReleaseInfo? {
         val json = JsonParser.parseString(body).asJsonObject
-        val tagName = json.get("tag_name")?.asString ?: return@withContext null
+        val tagName = json.get("tag_name")?.asString ?: return null
         val changelog = json.get("body")?.asString?.trim() ?: ""
-        val assets = json.getAsJsonArray("assets") ?: return@withContext null
+        val assets = json.getAsJsonArray("assets") ?: return null
         val apkUrl = assets
             .firstOrNull { it.asJsonObject.get("name")?.asString?.endsWith(".apk") == true }
             ?.asJsonObject?.get("browser_download_url")?.asString
-            ?: return@withContext null
-        ReleaseInfo(
+            ?: return null
+        return ReleaseInfo(
             tagName = tagName,
             versionName = tagName.trimStart('v'),
             changelog = changelog,

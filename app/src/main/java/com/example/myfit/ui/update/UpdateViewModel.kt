@@ -33,6 +33,9 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     var state by mutableStateOf<UpdateState>(UpdateState.Idle)
         private set
 
+    var previousReleases by mutableStateOf<List<ReleaseInfo>>(emptyList())
+        private set
+
     val currentVersion: String get() = BuildConfig.VERSION_NAME
 
     fun checkForUpdates() {
@@ -41,6 +44,9 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val release = UpdateChecker.fetchLatestRelease()
+                val recent = UpdateChecker.fetchRecentReleases()
+                previousReleases = recent?.filter { it.versionName != release?.versionName } ?: emptyList()
+
                 state = when {
                     release == null ->
                         UpdateState.Error("Не удалось получить данные о релизе.\nПроверьте подключение к интернету.")

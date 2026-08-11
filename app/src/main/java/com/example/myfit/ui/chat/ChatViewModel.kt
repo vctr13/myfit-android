@@ -28,6 +28,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         productDao     = app.database.productDao(),
         foodEntryDao   = app.database.foodEntryDao(),
         dailyLogDao    = app.database.dailyLogDao(),
+        userFactsDao   = app.database.userFactsDao(),
         apiKeyProvider = { app.securePrefs.apiKey },
         modelProvider  = { app.securePrefs.apiModel }
     )
@@ -84,7 +85,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         fat = item.fat,
                         carbs = item.carbs,
                         fiber = item.fiber.takeIf { it > 0 },
-                        water_ml = 0f,
+                        water_ml = item.waterMl,
+                        grams_g = item.amountG,
                         source = "ai_chat",
                         confidence = 0.85f
                     )
@@ -122,3 +124,4 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repository.clearHistory() }
     }
 }
+

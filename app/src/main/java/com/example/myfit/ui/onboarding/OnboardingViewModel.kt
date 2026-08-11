@@ -23,7 +23,6 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
     var weight by mutableStateOf("")
     var height by mutableStateOf("")
     var gender by mutableStateOf("male")
-    var goal by mutableStateOf("loss")
     var activityLevel by mutableStateOf(1.2f)
     var apiKey by mutableStateOf("")
     var selectedModel by mutableStateOf(SecurePrefs.DEFAULT_MODEL)
@@ -66,7 +65,7 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         when {
             birthLocalDate == null        -> { formError = "Укажите дату рождения"; return }
             ageInt !in 10..120            -> { formError = "Возраст должен быть от 10 до 120 лет"; return }
-            weightFloat == null || weightFloat !in 30f..300f -> { formError = "Введите корректный вес (30–300 кг)"; return }
+            weightFloat == null || weightFloat !in 1f..300f -> { formError = "Введите корректный вес (1–300 кг)"; return }
             heightFloat == null || heightFloat !in 100f..250f -> { formError = "Введите корректный рост (100–250 см)"; return }
             keyStatus !is KeyStatus.Valid -> { formError = "Сначала проверьте API-ключ"; return }
         }
@@ -79,7 +78,6 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
                 gender = gender,
                 height_cm = heightFloat!!,
                 weight_kg = weightFloat!!,
-                goal = goal,
                 activity_level = activityLevel,
                 api_key_set = true
             ))

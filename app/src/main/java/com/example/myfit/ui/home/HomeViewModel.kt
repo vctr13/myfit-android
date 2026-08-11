@@ -1,4 +1,4 @@
-﻿package com.example.myfit.ui.home
+package com.example.myfit.ui.home
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -50,7 +50,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // ── Шаги и их калории — из DailyLog ──────────────────────────────
-    private val _todayLogForSteps: kotlinx.coroutines.flow.StateFlow<com.example.myfit.data.db.entity.DailyLog?> = _dateFlow
+    private val _todayLogForSteps: StateFlow<DailyLog?> = _dateFlow
         .flatMapLatest { date -> dailyLogDao.getByDate(date) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -80,19 +80,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── Weight period filter ──────────────────────────────────────────────────
+    // ── Weight / Waist period filter ──────────────────────────────────────────
     private val _weightPeriod = MutableStateFlow(WeightPeriod.M1)
     val weightPeriod: StateFlow<WeightPeriod> = _weightPeriod.asStateFlow()
 
     fun setWeightPeriod(p: WeightPeriod) { _weightPeriod.value = p }
 
+    private val _allWeightEntries = app.database.weightDao().getAllFlow()
+
     val weightHistory: StateFlow<List<WeightEntry>> =
-        combine(app.database.weightDao().getAllFlow(), _weightPeriod) { entries, period ->
-            if (period.days == null) entries
-            else {
-                val cutoff = LocalDate.now().minusDays(period.days.toLong()).toString()
-                entries.filter { it.date >= cutoff }
-            }
+        combine(_allWeightEntries, _weightPeriod) { entries, period ->
+            val cutoff = period.days?.let { LocalDate.now().minusDays(it.toLong()).toString() }
+            entries.filter { it.weight_kg > 0f && (cutoff == null || it.date >= cutoff) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val waistHistory: StateFlow<List<WeightEntry>> =
+        combine(_allWeightEntries, _weightPeriod) { entries, period ->
+            val cutoff = period.days?.let { LocalDate.now().minusDays(it.toLong()).toString() }
+            entries.filter { it.waist_cm != null && (cutoff == null || it.date >= cutoff) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -104,28 +110,32 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             else      -> "Доброй ночи"
         }
 
-    // ── Добавление веса ───────────────────────────────────────────────────────
+    // ── Добавление показателей ────────────────────────────────────────────────
     var showWeightDialog by mutableStateOf(false)
         private set
     var weightInput by mutableStateOf("")
+    var waistInput  by mutableStateOf("")
     var weightError by mutableStateOf<String?>(null)
         private set
 
-    fun openWeightDialog()    { weightInput = ""; weightError = null; showWeightDialog = true }
+    fun openWeightDialog()    { weightInput = ""; waistInput = ""; weightError = null; showWeightDialog = true }
     fun dismissWeightDialog() { showWeightDialog = false }
 
-    fun saveWeight() {
-        val kg = weightInput.replace(',', '.').toFloatOrNull()
-        if (kg == null || kg < 20f || kg > 300f) {
-            weightError = "Введите корректный вес (20–300 кг)"; return
-        }
+    fun saveMetrics() {
+        val kg = weightInput.trim().replace(',', '.').toFloatOrNull()
+        val cm = waistInput.trim().replace(',', '.').toFloatOrNull()
+        if (kg == null && cm == null) { weightError = "Введите хотя бы одно значение"; return }
+        if (kg != null && (kg < 1f || kg > 300f)) { weightError = "Некорректный вес (1–300 кг)"; return }
+        if (cm != null && (cm < 40f || cm > 200f)) { weightError = "Некорректный обхват (40–200 см)"; return }
+        weightError = null
         viewModelScope.launch {
             app.database.weightDao().insert(
-                WeightEntry(date = LocalDate.now().toString(), weight_kg = kg)
+                WeightEntry(date = LocalDate.now().toString(), weight_kg = kg ?: 0f, waist_cm = cm)
             )
-            // Обновляем текущий вес в профиле → пересчитываются все цели (КЖБУ, вода)
-            app.database.userProfileDao().getProfileOnce()?.let { profile ->
-                app.database.userProfileDao().upsert(profile.copy(current_weight_kg = kg))
+            if (kg != null) {
+                app.database.userProfileDao().getProfileOnce()?.let { profile ->
+                    app.database.userProfileDao().upsert(profile.copy(current_weight_kg = kg))
+                }
             }
         }
         showWeightDialog = false

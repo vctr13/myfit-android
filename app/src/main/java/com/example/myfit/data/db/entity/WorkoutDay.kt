@@ -1,4 +1,4 @@
-package com.example.myfit.data.db.entity
+﻿package com.example.myfit.data.db.entity
 
 import androidx.room.Entity
 import androidx.room.Index
@@ -14,6 +14,8 @@ data class WorkoutDay(
     val label: String? = null,
     val is_completed: Boolean = false,
     val calories_burned: Int = 0,
+    val duration_minutes: Int? = null,
     val week_number: Int = 1,
     val created_at: Long = System.currentTimeMillis()
 )
+

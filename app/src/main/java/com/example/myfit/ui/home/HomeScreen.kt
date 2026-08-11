@@ -81,6 +81,7 @@ fun HomeScreen(
     val profile             by vm.profile.collectAsState()
     val today               by vm.todayNutrition.collectAsState()
     val weightHistory       by vm.weightHistory.collectAsState()
+    val waistHistory        by vm.waistHistory.collectAsState()
     val weightPeriod        by vm.weightPeriod.collectAsState()
     val isTrainingDay       by vm.isTrainingDay.collectAsState()
     val stepCalories        by vm.stepCalories.collectAsState()
@@ -117,7 +118,7 @@ fun HomeScreen(
                 )
                 if (p != null) {
                     Text(
-                        text  = "Цель: ${goalLabel(p.goal)} · ${(if (isTrainingDay) p.target_kcal_training else p.target_kcal).roundToInt()} ккал / день",
+                        text  = "${(if (isTrainingDay) p.target_kcal_training else p.target_kcal).roundToInt()} ккал / день",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -160,10 +161,11 @@ fun HomeScreen(
             }
 
             WeightCard(
-                entries       = weightHistory,
-                period        = weightPeriod,
+                entries        = weightHistory,
+                waistEntries   = waistHistory,
+                period         = weightPeriod,
                 onPeriodChange = { vm.setWeightPeriod(it) },
-                onAddClick    = { vm.openWeightDialog() }
+                onAddClick     = { vm.openWeightDialog() }
             )
         }
     }
@@ -171,24 +173,31 @@ fun HomeScreen(
     if (vm.showWeightDialog) {
         AlertDialog(
             onDismissRequest = { vm.dismissWeightDialog() },
-            title = { Text("Добавить вес") },
+            title = { Text("Добавить показатели") },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value         = vm.weightInput,
-                        onValueChange = { vm.weightInput = it },
-                        label         = { Text("кг (например 74.5)") },
+                        value           = vm.weightInput,
+                        onValueChange   = { vm.weightInput = it },
+                        label           = { Text("Вес, кг (например 74.5)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine    = true,
-                        modifier      = Modifier.fillMaxWidth()
+                        singleLine      = true,
+                        modifier        = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value           = vm.waistInput,
+                        onValueChange   = { vm.waistInput = it },
+                        label           = { Text("Талия, см (например 82.0)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine      = true,
+                        modifier        = Modifier.fillMaxWidth()
                     )
                     vm.weightError?.let {
-                        Spacer(Modifier.height(4.dp))
                         Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
-            confirmButton  = { TextButton(onClick = { vm.saveWeight() }) { Text("Сохранить") } },
+            confirmButton  = { TextButton(onClick = { vm.saveMetrics() }) { Text("Сохранить") } },
             dismissButton  = { TextButton(onClick = { vm.dismissWeightDialog() }) { Text("Отмена") } }
         )
     }
@@ -214,7 +223,7 @@ private fun CaloriesCard(
             Spacer(Modifier.height(10.dp))
 
             CalorieRow(
-                label      = "Съедено",
+                label      = "Потреблено",
                 value      = "${eaten.roundToInt()} / ${target.roundToInt()} ккал",
                 valueColor = accentColor,
                 bold       = true
@@ -228,7 +237,11 @@ private fun CaloriesCard(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text  = if (remaining > 0) "Осталось: ${remaining.roundToInt()} ккал" else "Цель достигнута!",
+                text  = when {
+                    remaining > 0  -> "Осталось: ${remaining.roundToInt()} ккал"
+                    remaining == 0f -> "Цель достигнута!"
+                    else           -> "Цель достигнута! Превышение: +${(-remaining).roundToInt()} ккал"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant
                         else MaterialTheme.colorScheme.primary
@@ -294,6 +307,7 @@ private fun CalorieRow(label: String, value: String, valueColor: Color, bold: Bo
 @Composable
 private fun WeightCard(
     entries: List<WeightEntry>,
+    waistEntries: List<WeightEntry>,
     period: WeightPeriod,
     onPeriodChange: (WeightPeriod) -> Unit,
     onAddClick: () -> Unit
@@ -309,13 +323,13 @@ private fun WeightCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text("Динамика веса", style = MaterialTheme.typography.titleMedium)
+                Text("Вес & Талия", style = MaterialTheme.typography.titleMedium)
                 IconButton(onClick = onAddClick, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Add, contentDescription = "Внести вес", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Filled.Add, contentDescription = "Внести показатели", tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
-            // Period selector
+            // Period selector (shared for both graphs)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 WeightPeriod.entries.forEach { p ->
                     FilterChip(
@@ -330,6 +344,10 @@ private fun WeightCard(
                 }
             }
 
+            // ── Weight section ────────────────────────────────────────────────
+            Text("Динамика веса", style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+
             if (entries.isEmpty()) {
                 Text(
                     "Нет данных за период. Нажмите + чтобы внести вес.",
@@ -337,7 +355,6 @@ private fun WeightCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                // Current weight + delta
                 Row(
                     modifier          = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
@@ -372,10 +389,60 @@ private fun WeightCard(
                         }
                     }
                 }
-
-                // Graph
                 if (entries.size >= 2) {
                     WeightGraph(entries = entries)
+                }
+            }
+
+            // ── Waist section ─────────────────────────────────────────────────
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            Text("Динамика талии", style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            if (waistEntries.isEmpty()) {
+                Text(
+                    "Нет данных по талии. Нажмите + чтобы внести.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Row(
+                    modifier          = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text  = "Текущая",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text  = "${"%.1f".format(waistEntries.last().waist_cm)} см",
+                            style = MaterialTheme.typography.displaySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    if (waistEntries.size >= 2) {
+                        val diff = waistEntries.last().waist_cm!! - waistEntries.first().waist_cm!!
+                        val sign = if (diff >= 0) "+" else ""
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text  = "За период",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text  = "$sign${"%.1f".format(diff)} см",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (diff <= 0f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+                if (waistEntries.size >= 2) {
+                    WaistGraph(entries = waistEntries)
                 }
             }
         }
@@ -386,7 +453,7 @@ private fun WeightCard(
 
 @Composable
 private fun WeightGraph(entries: List<WeightEntry>) {
-    if (entries.size < 2) return
+    if (entries.isEmpty()) return
 
     val lineColor  = MaterialTheme.colorScheme.primary
     val fillColor  = lineColor.copy(alpha = 0.15f)
@@ -399,9 +466,10 @@ private fun WeightGraph(entries: List<WeightEntry>) {
 
     val minW = entries.minOf { it.weight_kg }
     val maxW = entries.maxOf { it.weight_kg }
-    val step     = niceStep((maxW - minW).toDouble()).toFloat()
-    val gridMin  = (floor((minW / step).toDouble()) * step).toFloat()
-    val gridMax  = (ceil((maxW / step).toDouble()) * step).toFloat()
+    val rawRange = maxW - minW
+    val step     = niceStep(rawRange.toDouble()).toFloat().takeIf { it > 0f } ?: 1f
+    val gridMin  = if (rawRange == 0f) minW - step else (floor((minW / step).toDouble()) * step).toFloat()
+    val gridMax  = if (rawRange == 0f) maxW + step else (ceil((maxW / step).toDouble()) * step).toFloat()
     val gridCount = ((gridMax - gridMin) / step).toInt().coerceIn(1, 8)
     val yRange   = (gridMax - gridMin).coerceAtLeast(step)
 
@@ -414,16 +482,14 @@ private fun WeightGraph(entries: List<WeightEntry>) {
         val gh = size.height - tp - bp
         val n  = entries.size
 
-        fun xOf(i: Int) = lp + (i.toFloat() / (n - 1)) * gw
+        fun xOf(i: Int) = if (n == 1) lp + gw / 2 else lp + (i.toFloat() / (n - 1)) * gw
         fun yOf(kg: Float) = tp + (1f - (kg - gridMin) / yRange).coerceIn(0f, 1f) * gh
 
-        // ── Grid lines ────────────────────────────────────────────────────
         for (i in 0..gridCount) {
             val y = tp + (1f - (i.toFloat() * step) / yRange) * gh
             drawLine(gridColor, Offset(lp, y), Offset(lp + gw, y), 0.8.dp.toPx())
         }
 
-        // ── Gradient fill ─────────────────────────────────────────────────
         val pts = entries.mapIndexed { i, e -> Offset(xOf(i), yOf(e.weight_kg)) }
         val fillPath = Path().apply {
             moveTo(pts.first().x, tp + gh)
@@ -435,14 +501,12 @@ private fun WeightGraph(entries: List<WeightEntry>) {
             listOf(fillColor, Color.Transparent), tp, tp + gh
         ))
 
-        // ── Line ──────────────────────────────────────────────────────────
         val linePath = Path().apply {
             moveTo(pts.first().x, pts.first().y)
             pts.drop(1).forEach { lineTo(it.x, it.y) }
         }
         drawPath(linePath, lineColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
 
-        // ── Dots ──────────────────────────────────────────────────────────
         pts.forEachIndexed { idx, pt ->
             if (idx == pts.lastIndex) {
                 drawCircle(Color.White, 5.dp.toPx(), pt)
@@ -452,7 +516,6 @@ private fun WeightGraph(entries: List<WeightEntry>) {
             }
         }
 
-        // ── Text labels (Y + X) ───────────────────────────────────────────
         val xIdxs = pickLabelIndices(n, maxLabels = 4)
         drawIntoCanvas { canvas ->
             val paint = Paint().apply {
@@ -461,11 +524,109 @@ private fun WeightGraph(entries: List<WeightEntry>) {
                 color       = labelColorArgb
             }
             paint.textAlign = Paint.Align.RIGHT
+            val kgFmt = if (step < 1f) "%.1f" else "%.0f"
             for (i in 0..gridCount) {
                 val kg = gridMin + i * step
                 val y  = tp + (1f - (i.toFloat() * step) / yRange) * gh
                 canvas.nativeCanvas.drawText(
-                    "%.0f".format(kg), lp - 4.dp.toPx(), y + textSizePx * 0.38f, paint
+                    kgFmt.format(kg), lp - 4.dp.toPx(), y + textSizePx * 0.38f, paint
+                )
+            }
+            paint.textAlign = Paint.Align.CENTER
+            xIdxs.forEach { idx ->
+                canvas.nativeCanvas.drawText(
+                    formatShortDate(entries[idx].date),
+                    xOf(idx),
+                    tp + gh + bp - 4.dp.toPx(),
+                    paint
+                )
+            }
+        }
+    }
+}
+
+// ── Waist graph with axes ─────────────────────────────────────────────────────
+
+@Composable
+private fun WaistGraph(entries: List<WeightEntry>) {
+    if (entries.isEmpty()) return
+
+    val lineColor  = MaterialTheme.colorScheme.secondary
+    val fillColor  = lineColor.copy(alpha = 0.15f)
+    val gridColor  = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val labelColorArgb = labelColor.toArgb()
+    val density        = LocalDensity.current
+    val textSizePx     = with(density) { 10.sp.toPx() }
+
+    val values = entries.map { it.waist_cm!! }
+    val minW = values.min()
+    val maxW = values.max()
+    val rawRange = maxW - minW
+    val step     = niceStep(rawRange.toDouble()).toFloat().takeIf { it > 0f } ?: 1f
+    val gridMin  = if (rawRange == 0f) minW - step else (floor((minW / step).toDouble()) * step).toFloat()
+    val gridMax  = if (rawRange == 0f) maxW + step else (ceil((maxW / step).toDouble()) * step).toFloat()
+    val gridCount = ((gridMax - gridMin) / step).toInt().coerceIn(1, 8)
+    val yRange   = (gridMax - gridMin).coerceAtLeast(step)
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+        val lp = 44.dp.toPx()
+        val rp = 8.dp.toPx()
+        val tp = 8.dp.toPx()
+        val bp = 24.dp.toPx()
+        val gw = size.width - lp - rp
+        val gh = size.height - tp - bp
+        val n  = entries.size
+
+        fun xOf(i: Int) = if (n == 1) lp + gw / 2 else lp + (i.toFloat() / (n - 1)) * gw
+        fun yOf(cm: Float) = tp + (1f - (cm - gridMin) / yRange).coerceIn(0f, 1f) * gh
+
+        for (i in 0..gridCount) {
+            val y = tp + (1f - (i.toFloat() * step) / yRange) * gh
+            drawLine(gridColor, Offset(lp, y), Offset(lp + gw, y), 0.8.dp.toPx())
+        }
+
+        val pts = entries.mapIndexed { i, e -> Offset(xOf(i), yOf(e.waist_cm!!)) }
+        val fillPath = Path().apply {
+            moveTo(pts.first().x, tp + gh)
+            pts.forEach { lineTo(it.x, it.y) }
+            lineTo(pts.last().x, tp + gh)
+            close()
+        }
+        drawPath(fillPath, Brush.verticalGradient(
+            listOf(fillColor, Color.Transparent), tp, tp + gh
+        ))
+
+        val linePath = Path().apply {
+            moveTo(pts.first().x, pts.first().y)
+            pts.drop(1).forEach { lineTo(it.x, it.y) }
+        }
+        drawPath(linePath, lineColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+
+        pts.forEachIndexed { idx, pt ->
+            if (idx == pts.lastIndex) {
+                drawCircle(Color.White, 5.dp.toPx(), pt)
+                drawCircle(lineColor,   4.dp.toPx(), pt, style = Stroke(2.dp.toPx()))
+            } else {
+                drawCircle(lineColor, 2.5.dp.toPx(), pt)
+            }
+        }
+
+        val xIdxs = pickLabelIndices(n, maxLabels = 4)
+        drawIntoCanvas { canvas ->
+            val paint = Paint().apply {
+                isAntiAlias = true
+                textSize    = textSizePx
+                color       = labelColorArgb
+            }
+            paint.textAlign = Paint.Align.RIGHT
+            val cmFmt = if (step < 1f) "%.1f" else "%.0f"
+            for (i in 0..gridCount) {
+                val cm = gridMin + i * step
+                val y  = tp + (1f - (i.toFloat() * step) / yRange) * gh
+                canvas.nativeCanvas.drawText(
+                    cmFmt.format(cm), lp - 4.dp.toPx(), y + textSizePx * 0.38f, paint
                 )
             }
             paint.textAlign = Paint.Align.CENTER
@@ -583,8 +744,12 @@ private fun niceStep(range: Double): Double = when {
 
 private fun pickLabelIndices(size: Int, maxLabels: Int): List<Int> {
     if (size <= maxLabels) return (0 until size).toList()
+    val indices = mutableSetOf(0, size - 1)
     val step = (size - 1).toFloat() / (maxLabels - 1)
-    return (0 until maxLabels).map { (it * step).roundToInt() }
+    for (i in 1 until maxLabels - 1) {
+        indices += ((i * step).roundToInt()).coerceIn(1, size - 2)
+    }
+    return indices.sorted()
 }
 
 private fun formatShortDate(iso: String): String = try {
@@ -592,10 +757,3 @@ private fun formatShortDate(iso: String): String = try {
     val fmt = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("ru"))
     d.format(fmt)
 } catch (e: Exception) { iso.takeLast(5) }
-
-private fun goalLabel(goal: String) = when (goal) {
-    "loss"     -> "снижение веса"
-    "gain"     -> "набор массы"
-    "maintain" -> "поддержание"
-    else       -> goal
-}

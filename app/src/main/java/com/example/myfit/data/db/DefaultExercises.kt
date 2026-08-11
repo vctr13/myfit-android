@@ -77,13 +77,15 @@ object DefaultExercises {
             name = "Планка прямая",
             muscle_groups = "кор",
             description = "Упор на предплечьях или прямых руках. Тело прямое от головы до пят — без провисания таза и подъёма попы. Дыши ровно. 3 × 30–60 сек",
-            training_mode = "both"
+            training_mode = "both",
+            is_time_based = true
         ),
         Exercise(
             name = "Боковая планка",
             muscle_groups = "кор, косые мышцы",
             description = "Опора на предплечье и ребро стопы. Тело прямое, таз не провисает, бёдра не уходят вперёд. 3 × 20–45 сек каждую сторону",
-            training_mode = "both"
+            training_mode = "both",
+            is_time_based = true
         ),
         Exercise(
             name = "Подъём коленей в висе",
@@ -95,7 +97,8 @@ object DefaultExercises {
             name = "Вакуум",
             muscle_groups = "TVA (поперечная мышца живота)",
             description = "Выдохни весь воздух, максимально втяни живот под рёбра. Удержи 20–40 сек. Лучше выполнять утром натощак стоя, сидя или на четвереньках. 5–8 повторений",
-            training_mode = "both"
+            training_mode = "both",
+            is_time_based = true
         ),
         Exercise(
             name = "Выпады",
@@ -149,7 +152,8 @@ object DefaultExercises {
             name = "Лодочка",
             muscle_groups = "нижняя спина, кор",
             description = "Лёжа на животе. Поясница прижата к полу — не допускай прогиба. Одновременно отрывай лопатки и ноги от пола, удерживай положение. Качество важнее времени — не теряй нейтральное положение поясницы. 3×20–40 сек",
-            training_mode = "both"
+            training_mode = "both",
+            is_time_based = true
         ),
         Exercise(
             name = "Подъём на носки",

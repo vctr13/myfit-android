@@ -1,31 +1,36 @@
 ﻿package com.example.myfit.ui.main
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
@@ -59,32 +64,28 @@ import com.example.myfit.ui.archive.DayDetailScreen
 import com.example.myfit.ui.chat.ChatScreen
 import com.example.myfit.ui.diet.DietScreen
 import com.example.myfit.ui.fitness.FitnessScreen
+import com.example.myfit.ui.fitness.WorkoutDiaryScreen
 import com.example.myfit.ui.home.HomeScreen
 import com.example.myfit.ui.nav.Screen
-import com.example.myfit.ui.pedometer.PedometerScreen
 import com.example.myfit.ui.products.MyProductsScreen
 import com.example.myfit.ui.settings.SettingsScreen
 import com.example.myfit.ui.update.UpdateState
 import com.example.myfit.ui.update.UpdateViewModel
-import android.content.Intent
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 private data class DrawerItem(val screen: Screen, val label: String, val icon: ImageVector)
 
 private val mainItems = listOf(
     DrawerItem(Screen.Home, "Главная", Icons.Filled.Home),
     DrawerItem(Screen.Fitness, "Фитнес", Icons.Filled.FitnessCenter),
+    DrawerItem(Screen.WorkoutDiary, "Дневник тренировок", Icons.Filled.History),
     DrawerItem(Screen.Diet, "Диета", Icons.Filled.Restaurant),
     DrawerItem(Screen.Chat, "Чат с AI", Icons.Filled.Chat),
-    DrawerItem(Screen.Pedometer, "Шагомер", Icons.Filled.DirectionsWalk),
     DrawerItem(Screen.Archive, "Архив питания", Icons.Filled.DateRange),
 )
 
 @Composable
 fun MainScreen(onResetApp: () -> Unit = {}) {
-    val ctx            = LocalContext.current
     val navController  = rememberNavController()
     val drawerState    = rememberDrawerState(DrawerValue.Closed)
     val scope          = rememberCoroutineScope()
@@ -101,8 +102,19 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
-                Text("MyFIT", style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text("VFit", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "(by VCTR)",
+                        style    = MaterialTheme.typography.bodySmall,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                }
                 Text("AI-нутрициолог", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp))
@@ -166,19 +178,6 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                HorizontalDivider(Modifier.padding(vertical = 10.dp))
-
-                NavigationDrawerItem(
-                    icon     = { Icon(Icons.Filled.ExitToApp, contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error) },
-                    label    = { Text("Выйти из приложения",
-                                    color = MaterialTheme.colorScheme.error) },
-                    selected = false,
-                    onClick  = {
-                            exitProcess(0)
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
             }
         }
     ) {
@@ -202,9 +201,6 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
             composable(Screen.Chat.route) {
                 ChatScreen(onOpenDrawer = { openDrawer() })
             }
-            composable(Screen.Pedometer.route) {
-                PedometerScreen(onOpenDrawer = { openDrawer() })
-            }
             composable(Screen.Archive.route) {
                 ArchiveScreen(
                     onBack = { navController.popBackStack() },
@@ -217,6 +213,9 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
             ) { backStack ->
                 val date = backStack.arguments?.getString(Screen.DayDetail.ARG) ?: return@composable
                 DayDetailScreen(date = date, onBack = { navController.popBackStack() })
+            }
+            composable(Screen.WorkoutDiary.route) {
+                WorkoutDiaryScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
@@ -271,6 +270,30 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (vm.previousReleases.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text("Предыдущие версии:", style = MaterialTheme.typography.labelMedium)
+                            Spacer(Modifier.height(6.dp))
+                            vm.previousReleases.forEach { prev ->
+                                ElevatedCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { vm.downloadAndInstall(prev) }
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(prev.versionName, style = MaterialTheme.typography.bodyMedium)
+                                        Text("Откатить", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     is UpdateState.UpdateAvailable -> {
@@ -280,6 +303,15 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.Start
                         ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { vm.downloadAndInstall(state.release) }) {
+                                    Text("Обновить")
+                                }
+                                OutlinedButton(onClick = onDismiss) {
+                                    Text("Отменить")
+                                }
+                            }
+                            Spacer(Modifier.height(14.dp))
                             Text(
                                 "Доступна версия ${state.release.versionName}",
                                 style      = MaterialTheme.typography.titleSmall,
@@ -299,6 +331,30 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(state.release.changelog, style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (vm.previousReleases.isNotEmpty()) {
+                                Spacer(Modifier.height(10.dp))
+                                Text("Предыдущие версии:", style = MaterialTheme.typography.labelMedium)
+                                Spacer(Modifier.height(6.dp))
+                                vm.previousReleases.forEach { prev ->
+                                    ElevatedCard(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { vm.downloadAndInstall(prev) }
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(prev.versionName, style = MaterialTheme.typography.bodyMedium)
+                                            Text("Откатить", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -340,21 +396,17 @@ private fun UpdateDialog(vm: UpdateViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = {
             when (state) {
-                is UpdateState.UpdateAvailable ->
-                    Button(onClick = { vm.downloadAndInstall(state.release) }) {
-                        Text("Обновить")
-                    }
+                is UpdateState.UpdateAvailable -> {}
                 is UpdateState.NeedsPermission ->
                     Button(onClick = { vm.openInstallPermissionSettings() }) {
                         Text("Открыть настройки")
                     }
-                is UpdateState.Downloading -> { /* кнопок нет */ }
                 else ->
                     TextButton(onClick = onDismiss) { Text("Закрыть") }
             }
         },
         dismissButton = {
-            if (state is UpdateState.UpdateAvailable || state is UpdateState.NeedsPermission) {
+            if (state is UpdateState.NeedsPermission) {
                 TextButton(onClick = onDismiss) { Text("Отмена") }
             }
         }

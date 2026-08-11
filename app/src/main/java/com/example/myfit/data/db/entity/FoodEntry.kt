@@ -24,5 +24,6 @@ data class FoodEntry(
     val food_quality: String? = null,
     val note: String? = null,
     val water_ml: Float = 0f,
+    val grams_g: Float = 0f,
     val created_at: Long = System.currentTimeMillis()
 )

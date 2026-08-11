@@ -49,6 +49,10 @@ interface WorkoutEntryDao {
     @Query("SELECT * FROM workout_entry WHERE exercise_id = :exerciseId ORDER BY id DESC LIMIT :limit")
     suspend fun getRecentEntriesForExercise(exerciseId: Int, limit: Int): List<WorkoutEntry>
 
+    @Transaction
+    @Query("SELECT * FROM workout_entry ORDER BY workout_day_id DESC, sort_order ASC")
+    fun getAllWithExercise(): Flow<List<WorkoutEntryWithExercise>>
+
     @Query("DELETE FROM workout_entry WHERE workout_day_id NOT IN (SELECT id FROM workout_day)")
     suspend fun deleteOrphans()
 }

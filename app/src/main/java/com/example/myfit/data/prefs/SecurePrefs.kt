@@ -41,6 +41,10 @@ class SecurePrefs(context: Context) {
         }
         set(value) = prefs.edit().putString(KEY_SAVED_MODELS, value.joinToString(",")).apply()
 
+    var timerSound: String
+        get() = prefs.getString(KEY_TIMER_SOUND, "ring") ?: "ring"
+        set(value) = prefs.edit().putString(KEY_TIMER_SOUND, value).apply()
+
     fun clearAll() {
         prefs.edit().clear().apply()
     }
@@ -51,6 +55,13 @@ class SecurePrefs(context: Context) {
         const val DEFAULT_MODEL = "gemini-2.5-flash"
 
         private const val KEY_SAVED_MODELS = "saved_models"
+        private const val KEY_TIMER_SOUND  = "timer_sound"
+
+        val TIMER_SOUNDS = listOf(
+            "ring"         to "ring.mp3 (по умолчанию)",
+            "notification" to "Системное уведомление",
+            "none"         to "Без звука"
+        )
 
         val AVAILABLE_MODELS = listOf(
             "gemini-2.5-flash",

@@ -121,11 +121,6 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         val genderLabel = if (p.gender == "male") "Мужской" else "Женский"
-                        val goalLabel = when (p.goal) {
-                            "loss" -> "Похудение"
-                            "gain" -> "Набор массы"
-                            else  -> "Поддержание"
-                        }
                         p.birth_date?.let { bd ->
                             runCatching {
                                 val d = LocalDate.parse(bd)
@@ -138,10 +133,10 @@ fun SettingsScreen(
                         ProfileRow("Пол", genderLabel)
                         ProfileRow("Рост", "${p.height_cm.toInt()} см")
                         ProfileRow("Начальный вес", "${"%.1f".format(p.weight_kg)} кг")
+                        p.waist_cm?.let { ProfileRow("Обхват талии", "${"%.1f".format(it)} см") }
                         if (p.current_weight_kg != p.weight_kg) {
                             ProfileRow("Текущий вес", "${"%.1f".format(p.current_weight_kg)} кг")
                         }
-                        ProfileRow("Цель", goalLabel)
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
                         ProfileRow("Цель ккал", "${p.target_kcal.roundToInt()} ккал/день")
                         ProfileRow("Белки", "${"%.1f".format(p.target_protein_g)} г/день")
@@ -274,6 +269,49 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            HorizontalDivider()
+
+            // ── Тренировки ───────────────────────────────────────────
+            Text("Тренировки", style = MaterialTheme.typography.titleMedium)
+
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Сигнал таймера отдыха",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    var soundExpanded by remember { mutableStateOf(false) }
+                    val soundLabel = com.example.myfit.data.prefs.SecurePrefs.TIMER_SOUNDS
+                        .find { it.first == vm.timerSound }?.second ?: vm.timerSound
+                    ExposedDropdownMenuBox(
+                        expanded = soundExpanded,
+                        onExpandedChange = { soundExpanded = !soundExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value     = soundLabel,
+                            onValueChange = {},
+                            readOnly  = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = soundExpanded) },
+                            modifier  = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = soundExpanded,
+                            onDismissRequest = { soundExpanded = false }
+                        ) {
+                            com.example.myfit.data.prefs.SecurePrefs.TIMER_SOUNDS.forEach { (key, label) ->
+                                DropdownMenuItem(
+                                    text    = { Text(label) },
+                                    onClick = { vm.selectTimerSound(key); soundExpanded = false }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -500,11 +538,6 @@ private fun ModelsPickerDialog(vm: SettingsViewModel) {
 @Composable
 private fun EditProfileDialog(vm: SettingsViewModel) {
     val genderOptions = listOf("male" to "Мужской", "female" to "Женский")
-    val goalOptions = listOf(
-        "loss"     to "Похудение",
-        "maintain" to "Поддержание",
-        "gain"     to "Набор массы"
-    )
     val activityOptions = listOf(
         1.2f   to "Сидячий (нет нагрузки)",
         1.375f to "Лёгкая (1–3 дня/нед.)",
@@ -513,7 +546,6 @@ private fun EditProfileDialog(vm: SettingsViewModel) {
     )
 
     var genderExpanded   by remember { mutableStateOf(false) }
-    var goalExpanded     by remember { mutableStateOf(false) }
     var activityExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -580,25 +612,15 @@ private fun EditProfileDialog(vm: SettingsViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                ExposedDropdownMenuBox(
-                    expanded = goalExpanded,
-                    onExpandedChange = { goalExpanded = !goalExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = goalOptions.find { it.first == vm.editGoal }?.second ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Цель") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = goalExpanded, onDismissRequest = { goalExpanded = false }) {
-                        goalOptions.forEach { (key, label) ->
-                            DropdownMenuItem(text = { Text(label) },
-                                onClick = { vm.editGoal = key; goalExpanded = false })
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value = vm.editWaist,
+                    onValueChange = { vm.editWaist = it },
+                    label = { Text("Обхват талии (см)") },
+                    placeholder = { Text("необязательно") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 ExposedDropdownMenuBox(
                     expanded = activityExpanded,

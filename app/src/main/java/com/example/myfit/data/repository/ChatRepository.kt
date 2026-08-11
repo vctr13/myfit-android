@@ -4,8 +4,10 @@ import com.example.myfit.data.db.dao.ChatMessageDao
 import com.example.myfit.data.db.dao.DailyLogDao
 import com.example.myfit.data.db.dao.FoodEntryDao
 import com.example.myfit.data.db.dao.ProductDao
+import com.example.myfit.data.db.dao.UserFactsDao
 import com.example.myfit.data.db.dao.UserProfileDao
 import com.example.myfit.data.db.entity.ChatMessage
+import com.example.myfit.data.db.entity.UserFacts
 import com.example.myfit.data.model.ChatResult
 import com.example.myfit.data.model.ParsedFoodData
 import com.example.myfit.data.network.GeminiService
@@ -13,7 +15,6 @@ import com.example.myfit.data.profile.ProfileContextBuilder
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
-import java.time.ZoneId
 
 class ChatRepository(
     private val chatMessageDao: ChatMessageDao,
@@ -21,6 +22,7 @@ class ChatRepository(
     private val productDao: ProductDao,
     private val foodEntryDao: FoodEntryDao,
     private val dailyLogDao: DailyLogDao,
+    private val userFactsDao: UserFactsDao,
     private val apiKeyProvider: () -> String,
     private val modelProvider: () -> String,
     private val chatType: String = CHAT_MAIN
@@ -28,11 +30,7 @@ class ChatRepository(
     private val gson = Gson()
 
     fun messages(): Flow<List<ChatMessage>> {
-        val todayStartMs = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-        return chatMessageDao.getMessagesFrom(chatType, todayStartMs)
+        return chatMessageDao.getMessages(chatType)
     }
 
     suspend fun send(userText: String): ChatResult {
@@ -44,24 +42,22 @@ class ChatRepository(
         val todayEntries = foodEntryDao.getByDateOnce(today)
         val todayTotals  = foodEntryDao.getDailyTotals(today)
         val isTrainingDay = dailyLogDao.getByDateOnce(today)?.is_training_day ?: false
+        val userFacts = userFactsDao.getAllOnce().take(20)
 
         val systemPrompt = if (profile != null)
-            ProfileContextBuilder.build(profile, products, todayEntries, todayTotals, isTrainingDay)
+            ProfileContextBuilder.build(profile, products, todayEntries, todayTotals, isTrainingDay, userFacts)
         else
-            FALLBACK_PROMPT
-
-        val todayStartMs = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-        val history = chatMessageDao
-            .getRecentMessagesSince(chatType, sinceMs = todayStartMs, limit = HISTORY_LIMIT)
-            .reversed()
-            .dropLast(1)
-            .map { it.role to it.content }
+            buildString {
+                appendLine(FALLBACK_PROMPT)
+                if (userFacts.isNotEmpty()) {
+                    appendLine()
+                    appendLine("Дополнительная информация о пользователе:")
+                    userFacts.forEach { appendLine("• ${it.key}: ${it.value}") }
+                }
+            }
 
         val fullReply = GeminiService(apiKeyProvider(), modelProvider())
-            .chat(systemPrompt, history, userText)
+            .chat(systemPrompt, emptyList(), userText)
 
         val match = FOOD_DATA_REGEX.find(fullReply)
         val foodData: ParsedFoodData? = match?.let {
@@ -82,7 +78,6 @@ class ChatRepository(
 
     companion object {
         const val CHAT_MAIN = "main"
-        private const val HISTORY_LIMIT = 20
         private const val KEEP_MESSAGES = 100
         private val FOOD_DATA_REGEX = Regex("""\[FOOD_DATA]([\s\S]*?)\[/FOOD_DATA]""")
 
