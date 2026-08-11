@@ -28,6 +28,12 @@ class MyFitApp : Application() {
                 AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10,
                 AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12
             )
+            // Откат на более старую версию приложения (кнопка «Откатить» в диалоге обновлений)
+            // оставляет на диске базу данных более новой схемы, чем знает старый код.
+            // Без этого Room аварийно завершает приложение при каждом запуске сразу
+            // после отката. Явных миграций назад нет — при откате безопаснее пересоздать
+            // локальные таблицы, чем крашиться в бесконечном цикле.
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
         securePrefs = SecurePrefs(this)
 
