@@ -118,7 +118,7 @@ fun HomeScreen(
                 )
                 if (p != null) {
                     Text(
-                        text  = "${(if (isTrainingDay) p.target_kcal_training else p.target_kcal).roundToInt()} ккал / день",
+                        text  = "${(if (isTrainingDay) p.target_kcal_training else p.target_kcal).roundToInt()} ккал / день · ${p.goalLabel}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -120,6 +120,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     var editWeight by mutableStateOf("")
     var editWaist  by mutableStateOf("")
     var editActivity by mutableStateOf(1.55f)
+    var editGoal by mutableStateOf("maintain")
     var editError by mutableStateOf<String?>(null)
 
     fun openEditProfile() {
@@ -130,6 +131,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         editWeight = "%.1f".format(p.weight_kg)
         editWaist  = p.waist_cm?.let { "%.1f".format(it) } ?: ""
         editActivity = p.activity_level
+        editGoal = p.goal
         editError = null
         showEditProfile = true
     }
@@ -164,7 +166,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 weight_kg = weight!!,
                 current_weight_kg = current?.current_weight_kg ?: weight!!,
                 waist_cm = waist,
-                goal = current?.goal ?: "maintain",
+                goal = editGoal,
                 activity_level = editActivity,
                 api_key_set = current?.api_key_set ?: false,
                 created_at = current?.created_at ?: System.currentTimeMillis()

@@ -29,7 +29,12 @@ data class UserProfile(
 
     val tdee: Float get() = bmr * activity_level
 
-    val target_kcal: Float get() = tdee * 0.82f
+    // Коэффициенты TDEE по цели: обычный день / тренировочный день
+    val target_kcal: Float get() = tdee * when (goal) {
+        "lose" -> 0.82f
+        "gain" -> 1.05f
+        else   -> 0.95f // maintain
+    }
 
     val target_protein_g: Float get() = current_weight_kg * 1.7f
 
@@ -39,7 +44,11 @@ data class UserProfile(
 
     val target_carbs_g: Float get() = (target_kcal - target_protein_g * 4f - target_fat_g * 9f) / 4f
 
-    val target_kcal_training: Float get() = tdee * 0.95f
+    val target_kcal_training: Float get() = tdee * when (goal) {
+        "lose" -> 0.95f
+        "gain" -> 1.15f
+        else   -> 1.05f // maintain
+    }
 
     val target_water_ml_training: Int get() = (current_weight_kg * 40).toInt()
 
@@ -47,4 +56,18 @@ data class UserProfile(
 
     val target_carbs_g_training: Float get() =
         (target_kcal_training - target_protein_g * 4f - target_fat_g_training * 9f) / 4f
+
+    val goalLabel: String get() = when (goal) {
+        "lose" -> "Похудение"
+        "gain" -> "Набор массы"
+        else   -> "Поддержание веса"
+    }
+
+    companion object {
+        val GOAL_OPTIONS = listOf(
+            "lose" to "Похудение",
+            "maintain" to "Поддержание веса",
+            "gain" to "Набор массы"
+        )
+    }
 }

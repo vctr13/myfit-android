@@ -180,6 +180,12 @@ private fun TodayTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Text(
+            text  = "Цель: ${p.goalLabel}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         // Тренировочный день — переключатель
         FilterChip(
             selected = isTrainingDay,
@@ -312,6 +318,7 @@ private fun GoalTab(profile: UserProfile?, isTrainingDay: Boolean) {
                     color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SubValue("Цель", p.goalLabel)
                     SubValue("TDEE", "${p.tdee.roundToInt()} ккал")
                     SubValue("BMR", "${p.bmr.roundToInt()} ккал")
                 }

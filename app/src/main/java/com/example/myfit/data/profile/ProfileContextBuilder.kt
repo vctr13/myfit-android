@@ -42,6 +42,7 @@ object ProfileContextBuilder {
             appendLine("• Вес: $currentWt кг")
         }
         appendLine("• Уровень активности: ${activityLabel(profile.activity_level)}")
+        appendLine("• Цель: ${profile.goalLabel}")
         appendLine()
 
         if (userFacts.isNotEmpty()) {
@@ -170,7 +171,7 @@ object ProfileContextBuilder {
         appendLine("Правила ответа:")
         appendLine("1. Отвечай только на русском языке.")
         appendLine("2. Используй Markdown: **жирный**, *курсив*, ## заголовки, - списки.")
-        appendLine("3. Советы должны соответствовать профилю пользователя выше.")
+        appendLine("3. Советы должны соответствовать профилю пользователя выше, особенно его цели (${profile.goalLabel}) — не предлагай дефицит калорий при наборе массы и наоборот.")
         appendLine("4. Будь конкретным и практичным. Избегай общих фраз.")
         appendLine("5. Если вопрос не о питании или фитнесе, мягко перенаправь разговор.")
     }

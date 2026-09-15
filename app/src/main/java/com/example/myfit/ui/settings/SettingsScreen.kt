@@ -1,5 +1,6 @@
 ﻿package com.example.myfit.ui.settings
 
+import com.example.myfit.data.db.entity.UserProfile
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -137,8 +138,9 @@ fun SettingsScreen(
                         if (p.current_weight_kg != p.weight_kg) {
                             ProfileRow("Текущий вес", "${"%.1f".format(p.current_weight_kg)} кг")
                         }
+                        ProfileRow("Цель", p.goalLabel)
                         HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                        ProfileRow("Цель ккал", "${p.target_kcal.roundToInt()} ккал/день")
+                        ProfileRow("Калории", "${p.target_kcal.roundToInt()} ккал/день")
                         ProfileRow("Белки", "${"%.1f".format(p.target_protein_g)} г/день")
                         ProfileRow("Жиры", "${"%.1f".format(p.target_fat_g)} г/день")
                         ProfileRow("Углеводы", "${"%.1f".format(p.target_carbs_g)} г/день")
@@ -547,6 +549,7 @@ private fun EditProfileDialog(vm: SettingsViewModel) {
 
     var genderExpanded   by remember { mutableStateOf(false) }
     var activityExpanded by remember { mutableStateOf(false) }
+    var goalExpanded     by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { vm.dismissEditProfile() },
@@ -638,6 +641,26 @@ private fun EditProfileDialog(vm: SettingsViewModel) {
                         activityOptions.forEach { (value, label) ->
                             DropdownMenuItem(text = { Text(label) },
                                 onClick = { vm.editActivity = value; activityExpanded = false })
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = goalExpanded,
+                    onExpandedChange = { goalExpanded = !goalExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = UserProfile.GOAL_OPTIONS.find { it.first == vm.editGoal }?.second ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Цель") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = goalExpanded) },
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = goalExpanded, onDismissRequest = { goalExpanded = false }) {
+                        UserProfile.GOAL_OPTIONS.forEach { (key, label) ->
+                            DropdownMenuItem(text = { Text(label) },
+                                onClick = { vm.editGoal = key; goalExpanded = false })
                         }
                     }
                 }
