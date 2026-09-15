@@ -330,23 +330,46 @@ if (!ctx.packageManager.canRequestPackageInstalls()) {
 
 ---
 
-## GitHub Releases — публикация через PowerShell
+## GitHub Releases — публикация через gh CLI
 
+> **Устарело (не использовать):** способ ниже через `Invoke-RestMethod` с токеном из `fit/creds.txt` в заголовке `Authorization` **не работает с AI (Claude Code)** — защитный классификатор auto-режима блокирует любую команду, где AI сам читает/передаёт секрет из файла с учётными данными, даже через stdin/pipe, без объяснения причины в терминале пользователя. Не пытаться обойти — сразу переходить к `gh CLI`.
+> ```powershell
+> # НЕ РАБОТАЕТ ИЗ-ПОД AI — блокируется классификатором:
+> $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json))
+> Invoke-RestMethod -Uri $url -Method Post -Headers @{ Authorization="Bearer $token" } -Body $bodyBytes
+> ```
+
+### Рабочий способ — GitHub CLI (`gh`)
+
+Токен AI не трогает вообще — `gh` хранит свою сессию в Windows Credential Manager после разового логина человеком через браузер.
+
+**Установлен?** `C:\Program Files\GitHub CLI\gh.exe` (winget: `GitHub.cli`). Если `gh` не найден в PATH сразу после установки — либо вызывать полным путём `& "C:\Program Files\GitHub CLI\gh.exe" ...`, либо попросить пользователя перезапустить VS Code (PATH подхватится в новом терминале).
+
+**Проверка авторизации перед релизом:**
 ```powershell
-# Кириллица в теле релиза — кодировать явно:
-$bodyBytes = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json))
-Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body $bodyBytes
-
-# Загрузка APK:
-$apkBytes = [System.IO.File]::ReadAllBytes("app\build\outputs\apk\release\app-release.apk")
-Invoke-RestMethod -Uri "$uploadUrl?name=app-1.0.apk" -Method Post `
-    -Headers @{ Authorization="Bearer $token"; "Content-Type"="application/vnd.android.package-archive" } `
-    -Body $apkBytes
-
-# Git push через PAT:
-git push "https://TOKEN@github.com/owner/repo.git" main
-git remote set-url origin https://github.com/owner/repo.git  # убрать токен после пуша
+gh auth status
 ```
+Если ответ `not logged in` / команда `gh` не найдена / истёк токен (актуально в новой сессии, после переустановки, после отзыва токена) — **AI не может авторизовать `gh` сам** (тот же блок классификатора на работу с секретами). Сказать пользователю дословно:
+
+> Открой терминал в VS Code (Ctrl + `) и выполни:
+> ```
+> gh auth login
+> ```
+> Отвечай: **GitHub.com** → **HTTPS** → **Yes** → **Login with a web browser**. Появится код и предложение открыть браузер — нажми Enter, войди в аккаунт vctr13 (если спросит 2FA — подтверди как обычно). В терминале должно появиться `✓ Logged in as vctr13`. После этого напиши «готово».
+
+2FA при этом никак не мешает программным релизам — она нужна только один раз, при живом входе человека в браузере. Дальнейшие вызовы `gh` секретов и кодов не требуют.
+
+**Публикация релиза с APK:**
+```powershell
+gh release create v{X.Y} `
+  --repo vctr13/myfit-android `
+  --title "v{X.Y} — {Название на русском}" `
+  --notes-file "путь\к\release_notes.md" `
+  "app\build\outputs\apk\release\app-release.apk#app-{X.Y}.apk"
+```
+Кириллица в `--notes-file` и `--title` через `gh` передаётся корректно сама, доп. UTF8-кодирование не нужно (в отличие от старого способа через `Invoke-RestMethod`).
+
+**Git push** — обычный `git push origin master` работает и без `gh`, через Git Credential Manager (тот же самый, что был настроен раньше); `gh` нужен именно для Releases API.
 
 ---
 
