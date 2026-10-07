@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -84,6 +85,7 @@ import kotlin.math.roundToInt
 @Composable
 fun ChatScreen(
     onOpenDrawer: () -> Unit,
+    onNavigateToDiet: () -> Unit,
     vm: ChatViewModel = viewModel()
 ) {
     val messages by vm.messages.collectAsState()
@@ -107,6 +109,9 @@ fun ChatScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToDiet) {
+                        Icon(Icons.Filled.Restaurant, contentDescription = "Диета")
+                    }
                     IconButton(onClick = { vm.openFactsDialog() }) {
                         Icon(Icons.Filled.Psychology, contentDescription = "Память бота")
                     }

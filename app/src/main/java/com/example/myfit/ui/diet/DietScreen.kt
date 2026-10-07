@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.WaterDrop
@@ -72,6 +73,7 @@ import kotlin.math.roundToInt
 @Composable
 fun DietScreen(
     onOpenDrawer: () -> Unit,
+    onNavigateToChat: () -> Unit,
     vm: DietViewModel = viewModel()
 ) {
     LaunchedEffect(Unit) { vm.refreshDate() }
@@ -89,6 +91,11 @@ fun DietScreen(
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Filled.Menu, contentDescription = "Меню")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToChat) {
+                        Icon(Icons.Filled.Chat, contentDescription = "Чат с AI")
                     }
                 }
             )
@@ -364,6 +371,10 @@ private fun AddFoodDialog(vm: DietViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = vm.addFoodName, onValueChange = { vm.addFoodName = it },
                     label = { Text("Название") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = vm.addFoodGrams, onValueChange = { vm.addFoodGrams = it },
+                    label = { Text("Граммы") }, placeholder = { Text("необязательно") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = vm.addFoodKcal, onValueChange = { vm.addFoodKcal = it },
                         label = { Text("Ккал *") },

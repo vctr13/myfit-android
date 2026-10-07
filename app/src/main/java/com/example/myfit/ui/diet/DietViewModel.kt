@@ -96,6 +96,7 @@ class DietViewModel(application: Application) : AndroidViewModel(application) {
     var showAddFoodDialog by mutableStateOf(false)
         private set
     var addFoodName by mutableStateOf("")
+    var addFoodGrams by mutableStateOf("")
     var addFoodKcal by mutableStateOf("")
     var addFoodProtein by mutableStateOf("")
     var addFoodFat by mutableStateOf("")
@@ -106,7 +107,7 @@ class DietViewModel(application: Application) : AndroidViewModel(application) {
     val mealTypes = listOf("завтрак", "обед", "ужин", "перекус")
 
     fun openAddFoodDialog() {
-        addFoodName = ""; addFoodKcal = ""; addFoodProtein = ""
+        addFoodName = ""; addFoodGrams = ""; addFoodKcal = ""; addFoodProtein = ""
         addFoodFat = ""; addFoodCarbs = ""; addFoodError = null
         showAddFoodDialog = true
     }
@@ -121,12 +122,13 @@ class DietViewModel(application: Application) : AndroidViewModel(application) {
         val protein = addFoodProtein.toFloatOrNull() ?: 0f
         val fat = addFoodFat.toFloatOrNull() ?: 0f
         val carbs = addFoodCarbs.toFloatOrNull() ?: 0f
+        val grams = addFoodGrams.toFloatOrNull() ?: 0f
         val timeStr = LocalTime.now().toString().take(5)
         viewModelScope.launch {
             dao.insert(FoodEntry(
                 date = LocalDate.now().toString(), time = timeStr, meal_type = addFoodMeal,
                 name = name, calories = kcal, protein = protein, fat = fat, carbs = carbs,
-                source = "manual", confidence = 1f
+                grams_g = grams, source = "manual", confidence = 1f
             ))
         }
         showAddFoodDialog = false

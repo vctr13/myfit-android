@@ -196,10 +196,28 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
                 FitnessScreen(onOpenDrawer = { openDrawer() })
             }
             composable(Screen.Diet.route) {
-                DietScreen(onOpenDrawer = { openDrawer() })
+                DietScreen(
+                    onOpenDrawer = { openDrawer() },
+                    onNavigateToChat = {
+                        navController.navigate(Screen.Chat.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(Screen.Chat.route) {
-                ChatScreen(onOpenDrawer = { openDrawer() })
+                ChatScreen(
+                    onOpenDrawer = { openDrawer() },
+                    onNavigateToDiet = {
+                        navController.navigate(Screen.Diet.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(Screen.Archive.route) {
                 ArchiveScreen(
