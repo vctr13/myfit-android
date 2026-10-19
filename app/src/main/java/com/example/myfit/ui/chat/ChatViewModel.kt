@@ -79,7 +79,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun confirmFood(mealType: String) {
+    fun confirmFood(mealType: String, editedGrams: List<Float>) {
         val data = pendingFoodData ?: return
         pendingFoodData = null
         val today = LocalDate.now().toString()
@@ -88,7 +88,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val dao = app.database.foodEntryDao()
-            data.items.forEach { item ->
+            data.items.forEachIndexed { index, item ->
                 dao.insert(
                     FoodEntry(
                         date = entryDate,
@@ -101,7 +101,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         carbs = item.carbs,
                         fiber = item.fiber.takeIf { it > 0 },
                         water_ml = item.waterMl,
-                        grams_g = item.amountG,
+                        grams_g = editedGrams.getOrElse(index) { item.amountG },
                         source = "ai_chat",
                         confidence = 0.85f
                     )

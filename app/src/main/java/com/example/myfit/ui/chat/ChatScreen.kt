@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -70,6 +71,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -184,7 +186,7 @@ fun ChatScreen(
                 HorizontalDivider()
                 FoodConfirmCard(
                     foodData = foodData,
-                    onConfirm = { mealType -> vm.confirmFood(mealType) },
+                    onConfirm = { mealType, editedGrams -> vm.confirmFood(mealType, editedGrams) },
                     onDismiss = { vm.dismissFood() }
                 )
             }
@@ -339,7 +341,7 @@ private fun FactsDialog(vm: ChatViewModel) {
 @Composable
 private fun FoodConfirmCard(
     foodData: ParsedFoodData,
-    onConfirm: (mealType: String) -> Unit,
+    onConfirm: (mealType: String, editedGrams: List<Float>) -> Unit,
     onDismiss: () -> Unit
 ) {
     val mealTypes = listOf(
@@ -348,6 +350,16 @@ private fun FoodConfirmCard(
         "ужин"    to "Ужин",
         "перекус" to "Перекус"
     )
+
+    // Граммы редактируемы: AI иногда верно считает КБЖУ по весу, но не возвращает сам amount_g
+    // в JSON (особенно если в одном сообщении сразу несколько продуктов) — без этого поля
+    // граммы не показывались бы ни в журнале, ни в архиве, и пользователь узнавал бы об ошибке
+    // только постфактум. Редактируем здесь же, до того как запись уйдёт в БД.
+    val gramsText = remember(foodData) {
+        foodData.items.map { item ->
+            mutableStateOf(if (item.amountG > 0f) item.amountG.roundToInt().toString() else "")
+        }
+    }
     var selectedMeal by remember {
         val h = LocalTime.now().hour
         val m = LocalTime.now().minute
@@ -388,17 +400,32 @@ private fun FoodConfirmCard(
 
             // Food items (фильтруем воду и напитки — они идут в water_ml)
             val waterNames = setOf("вода", "water", "чай", "кофе", "сок", "молоко", "напиток", "напитки")
-            foodData.items.filter { it.name.lowercase() !in waterNames }.forEach { item ->
+            foodData.items.forEachIndexed { index, item ->
+                if (item.name.lowercase() in waterNames) return@forEachIndexed
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "${item.name} (${item.amountG.roundToInt()} г)",
+                            item.name,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = gramsText[index].value,
+                            onValueChange = { new ->
+                                if (new.length <= 5 && new.all { it.isDigit() }) gramsText[index].value = new
+                            },
+                            singleLine = true,
+                            isError = gramsText[index].value.toIntOrNull().let { it == null || it == 0 },
+                            placeholder = { Text("г") },
+                            suffix = { Text("г") },
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.width(84.dp)
                         )
                         Text(
                             "${item.kcal.roundToInt()} ккал",
@@ -438,7 +465,10 @@ private fun FoodConfirmCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { onConfirm(selectedMeal) },
+                    onClick = {
+                        val grams = gramsText.map { it.value.toFloatOrNull() ?: 0f }
+                        onConfirm(selectedMeal, grams)
+                    },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Добавить")
