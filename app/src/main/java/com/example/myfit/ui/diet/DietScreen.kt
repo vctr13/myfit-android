@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
@@ -73,7 +75,9 @@ import kotlin.math.roundToInt
 @Composable
 fun DietScreen(
     onOpenDrawer: () -> Unit,
+    onNavigateToFitness: () -> Unit,
     onNavigateToChat: () -> Unit,
+    onNavigateToMyProducts: () -> Unit,
     vm: DietViewModel = viewModel()
 ) {
     LaunchedEffect(Unit) { vm.refreshDate() }
@@ -94,6 +98,12 @@ fun DietScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToFitness) {
+                        Icon(Icons.Filled.FitnessCenter, contentDescription = "Фитнес")
+                    }
+                    IconButton(onClick = onNavigateToMyProducts) {
+                        Icon(Icons.Filled.Inventory2, contentDescription = "Мои продукты")
+                    }
                     IconButton(onClick = onNavigateToChat) {
                         Icon(Icons.Filled.Chat, contentDescription = "Чат с AI")
                     }

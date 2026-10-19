@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
@@ -89,6 +91,8 @@ import com.example.myfit.data.db.entity.WorkoutTemplate
 @Composable
 fun FitnessScreen(
     onOpenDrawer: () -> Unit,
+    onNavigateToDiet: () -> Unit,
+    onNavigateToChat: () -> Unit,
     vm: FitnessViewModel = viewModel()
 ) {
     LaunchedEffect(Unit) { vm.refreshDate() }
@@ -107,6 +111,12 @@ fun FitnessScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToDiet) {
+                        Icon(Icons.Filled.Restaurant, contentDescription = "Диета")
+                    }
+                    IconButton(onClick = onNavigateToChat) {
+                        Icon(Icons.Filled.Chat, contentDescription = "Чат с AI")
+                    }
                     if (!vm.isWorkoutActive) {
                         var showCatalogMenu by remember { mutableStateOf(false) }
                         Box {

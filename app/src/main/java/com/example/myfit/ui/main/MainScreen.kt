@@ -97,6 +97,15 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
     fun openDrawer()  = scope.launch { drawerState.open() }
     fun closeDrawer() = scope.launch { drawerState.close() }
 
+    // Переход между основными вкладками (как в боковом меню) — сохраняет состояние каждой вкладки
+    fun navigateToTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -190,33 +199,34 @@ fun MainScreen(onResetApp: () -> Unit = {}) {
 
         NavHost(navController = navController, startDestination = Screen.Home.route) {
             composable(Screen.Home.route) {
-                HomeScreen(onOpenDrawer = { openDrawer() })
+                HomeScreen(
+                    onOpenDrawer = { openDrawer() },
+                    onNavigateToFitness = { navigateToTab(Screen.Fitness.route) },
+                    onNavigateToDiet = { navigateToTab(Screen.Diet.route) },
+                    onNavigateToChat = { navigateToTab(Screen.Chat.route) }
+                )
             }
             composable(Screen.Fitness.route) {
-                FitnessScreen(onOpenDrawer = { openDrawer() })
+                FitnessScreen(
+                    onOpenDrawer = { openDrawer() },
+                    onNavigateToDiet = { navigateToTab(Screen.Diet.route) },
+                    onNavigateToChat = { navigateToTab(Screen.Chat.route) }
+                )
             }
             composable(Screen.Diet.route) {
                 DietScreen(
                     onOpenDrawer = { openDrawer() },
-                    onNavigateToChat = {
-                        navController.navigate(Screen.Chat.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onNavigateToFitness = { navigateToTab(Screen.Fitness.route) },
+                    onNavigateToChat = { navigateToTab(Screen.Chat.route) },
+                    // Обычный navigate (без popUpTo) — чтобы "назад" из "Моих продуктов" вернул на Диету
+                    onNavigateToMyProducts = { navController.navigate(Screen.MyProducts.route) }
                 )
             }
             composable(Screen.Chat.route) {
                 ChatScreen(
                     onOpenDrawer = { openDrawer() },
-                    onNavigateToDiet = {
-                        navController.navigate(Screen.Diet.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onNavigateToHome = { navigateToTab(Screen.Home.route) },
+                    onNavigateToDiet = { navigateToTab(Screen.Diet.route) }
                 )
             }
             composable(Screen.Archive.route) {

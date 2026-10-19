@@ -21,7 +21,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +77,9 @@ import kotlin.math.roundToInt
 @Composable
 fun HomeScreen(
     onOpenDrawer: () -> Unit,
+    onNavigateToFitness: () -> Unit,
+    onNavigateToDiet: () -> Unit,
+    onNavigateToChat: () -> Unit,
     vm: HomeViewModel = viewModel()
 ) {
     LaunchedEffect(Unit) { vm.refreshDate() }
@@ -94,6 +100,17 @@ fun HomeScreen(
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Filled.Menu, contentDescription = "Меню")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToFitness) {
+                        Icon(Icons.Filled.FitnessCenter, contentDescription = "Фитнес")
+                    }
+                    IconButton(onClick = onNavigateToDiet) {
+                        Icon(Icons.Filled.Restaurant, contentDescription = "Диета")
+                    }
+                    IconButton(onClick = onNavigateToChat) {
+                        Icon(Icons.Filled.Chat, contentDescription = "Чат с AI")
                     }
                 }
             )
