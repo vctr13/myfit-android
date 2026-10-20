@@ -36,6 +36,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private set
     var timerSound by mutableStateOf(prefs.timerSound)
         private set
+    var speechMethod by mutableStateOf(prefs.speechRecognitionMethod)
+        private set
 
     var apiModelsList by mutableStateOf<List<String>>(emptyList())
         private set
@@ -52,6 +54,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun selectModel(model: String) {
         prefs.apiModel = model
         selectedModel = model
+    }
+
+    fun selectSpeechMethod(method: String) {
+        prefs.speechRecognitionMethod = method
+        speechMethod = method
     }
 
     fun fetchModelsFromApi() {

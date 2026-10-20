@@ -83,6 +83,7 @@ fun SettingsScreen(
 ) {
     val profile by vm.profile.collectAsState()
     var modelExpanded by remember { mutableStateOf(false) }
+    var speechMethodExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -241,6 +242,43 @@ fun SettingsScreen(
 
             Text(
                 "Смена модели вступает в силу для новых сообщений.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HorizontalDivider()
+
+            // ── Распознавание речи ───────────────────────────────
+            Text("Распознавание речи", style = MaterialTheme.typography.titleMedium)
+
+            ExposedDropdownMenuBox(
+                expanded = speechMethodExpanded,
+                onExpandedChange = { speechMethodExpanded = !speechMethodExpanded }
+            ) {
+                OutlinedTextField(
+                    value = com.example.myfit.data.prefs.SecurePrefs.SPEECH_METHODS
+                        .find { it.first == vm.speechMethod }?.second ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Способ надиктовки в чате") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = speechMethodExpanded) },
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = speechMethodExpanded,
+                    onDismissRequest = { speechMethodExpanded = false }
+                ) {
+                    com.example.myfit.data.prefs.SecurePrefs.SPEECH_METHODS.forEach { (key, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = { vm.selectSpeechMethod(key); speechMethodExpanded = false }
+                        )
+                    }
+                }
+            }
+            Text(
+                "Gemini распознаёт точнее, но тратит отдельный дневной лимит запросов " +
+                "(модель gemini-2.5-flash-lite, не делит квоту с основным чатом).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

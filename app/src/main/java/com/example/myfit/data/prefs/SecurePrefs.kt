@@ -45,6 +45,13 @@ class SecurePrefs(context: Context) {
         get() = prefs.getString(KEY_TIMER_SOUND, "ring") ?: "ring"
         set(value) = prefs.edit().putString(KEY_TIMER_SOUND, value).apply()
 
+    // Сейчас реализован только "android" (системный RecognizerIntent). Задел на будущее:
+    // когда добавим распознавание через Gemini — экран чата продолжит читать этот же
+    // флаг, менять нужно будет только значение в Настройках и логику выбора ниже.
+    var speechRecognitionMethod: String
+        get() = prefs.getString(KEY_SPEECH_METHOD, "android") ?: "android"
+        set(value) = prefs.edit().putString(KEY_SPEECH_METHOD, value).apply()
+
     fun clearAll() {
         prefs.edit().clear().apply()
     }
@@ -54,8 +61,9 @@ class SecurePrefs(context: Context) {
         private const val KEY_MODEL = "gemini_model"
         const val DEFAULT_MODEL = "gemini-2.5-flash"
 
-        private const val KEY_SAVED_MODELS = "saved_models"
-        private const val KEY_TIMER_SOUND  = "timer_sound"
+        private const val KEY_SAVED_MODELS  = "saved_models"
+        private const val KEY_TIMER_SOUND   = "timer_sound"
+        private const val KEY_SPEECH_METHOD = "speech_method"
 
         val TIMER_SOUNDS = listOf(
             "ring"         to "ring.mp3 (по умолчанию)",
@@ -68,6 +76,11 @@ class SecurePrefs(context: Context) {
             "gemini-2.5-flash-lite",
             "gemini-3-flash",
             "gemini-3.5-flash"
+        )
+
+        val SPEECH_METHODS = listOf(
+            "android" to "Системный (Android)",
+            "gemini"  to "Gemini"
         )
     }
 }

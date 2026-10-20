@@ -28,7 +28,13 @@ data class GeminiContent(
 )
 
 data class GeminiPart(
-    val text: String
+    val text: String? = null,
+    @SerializedName("inline_data") val inlineData: GeminiInlineData? = null
+)
+
+data class GeminiInlineData(
+    @SerializedName("mime_type") val mimeType: String,
+    val data: String // base64
 )
 
 // ── Response ───────────────────────────────────────────────
@@ -104,6 +110,43 @@ class GeminiService(private val apiKey: String, private val model: String) {
         }
     }
 
+
+    suspend fun transcribe(audioBase64: String, mimeType: String): String = withContext(Dispatchers.IO) {
+        val requestBody = GeminiRequest(
+            systemInstruction = GeminiPartList(listOf(
+                GeminiPart(text = "Ты — инструмент транскрипции речи. Отвечай только расшифрованным текстом на русском языке, без кавычек, комментариев и пояснений.")
+            )),
+            contents = listOf(
+                GeminiContent(
+                    role = "user",
+                    parts = listOf(
+                        GeminiPart(text = "Расшифруй эту аудиозапись."),
+                        GeminiPart(inlineData = GeminiInlineData(mimeType = mimeType, data = audioBase64))
+                    )
+                )
+            )
+        )
+
+        val url = modelUrl(model).toHttpUrl().newBuilder()
+            .addQueryParameter("key", apiKey)
+            .build()
+
+        val httpRequest = Request.Builder()
+            .url(url)
+            .post(gson.toJson(requestBody).toRequestBody("application/json".toMediaType()))
+            .build()
+
+        client.newCall(httpRequest).execute().use { response ->
+            val bodyStr = response.body?.string()
+            if (!response.isSuccessful) {
+                throw Exception("Gemini API ${response.code}: ${bodyStr?.take(300) ?: "нет тела"}")
+            }
+            val parsed = gson.fromJson(bodyStr, GeminiResponse::class.java)
+            parsed.candidates
+                ?.firstOrNull()?.content?.parts?.firstOrNull()?.text?.trim()
+                ?: throw Exception("Gemini не вернула расшифровку")
+        }
+    }
 
     suspend fun fetchModels(): List<GeminiModelInfo> = withContext(Dispatchers.IO) {
         val url = "https://generativelanguage.googleapis.com/v1beta/models".toHttpUrl()

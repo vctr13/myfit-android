@@ -1,5 +1,13 @@
 ﻿package com.example.myfit.ui.chat
 
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -41,6 +49,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.AlertDialog
@@ -104,6 +114,50 @@ fun ChatScreen(
     val messages by vm.messages.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val text = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!text.isNullOrBlank()) vm.onSpeechRecognized(text)
+        }
+    }
+
+    fun startAndroidVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Назовите, что съели")
+        }
+        if (intent.resolveActivity(context.packageManager) != null) {
+            speechLauncher.launch(intent)
+        } else {
+            Toast.makeText(context, "Распознавание речи недоступно на этом устройстве", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) vm.startRecordingVoiceGemini()
+        else Toast.makeText(context, "Нужно разрешение на микрофон", Toast.LENGTH_SHORT).show()
+    }
+
+    fun onMicClick() {
+        when (vm.speechRecognitionMethod) {
+            "gemini" -> when {
+                vm.isRecordingVoice -> vm.stopRecordingVoiceGemini()
+                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                    PackageManager.PERMISSION_GRANTED -> vm.startRecordingVoiceGemini()
+                else -> audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+            else -> startAndroidVoiceInput()
+        }
+    }
 
     LaunchedEffect(Unit) { vm.refreshDate() }
 
@@ -222,6 +276,32 @@ fun ChatScreen(
                     ),
                     keyboardActions = KeyboardActions(onSend = { vm.sendMessage() })
                 )
+                IconButton(
+                    onClick = { onMicClick() },
+                    enabled = !vm.isLoading && !vm.isTranscribing,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(
+                            color = if (vm.isRecordingVoice) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = CircleShape
+                        )
+                ) {
+                    if (vm.isTranscribing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (vm.isRecordingVoice) Icons.Filled.Stop else Icons.Filled.Mic,
+                            contentDescription = if (vm.isRecordingVoice) "Остановить запись" else "Надиктовать",
+                            tint = if (vm.isRecordingVoice) MaterialTheme.colorScheme.onError
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 val canSend = vm.inputText.isNotBlank() && !vm.isLoading
                 IconButton(
                     onClick = { vm.sendMessage() },

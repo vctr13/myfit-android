@@ -1,6 +1,8 @@
 ﻿package com.example.myfit.ui.chat
 
 import android.app.Application
+import android.media.MediaRecorder
+import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,14 +14,18 @@ import com.example.myfit.data.db.entity.FoodEntry
 import com.example.myfit.data.db.entity.UserFacts
 import com.example.myfit.data.model.ParsedFoodData
 import com.example.myfit.data.model.ParsedFoodItem
+import com.example.myfit.data.network.GeminiService
 import com.example.myfit.data.repository.ChatRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -55,6 +61,112 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     var inputText by mutableStateOf("")
     var isLoading by mutableStateOf(false)
         private set
+
+    // Сейчас есть только "android" (системный RecognizerIntent). Экран читает это значение,
+    // чтобы в будущем при добавлении распознавания через Gemini переключение происходило
+    // только через Настройки, без изменений в UI чата.
+    val speechRecognitionMethod: String get() = app.securePrefs.speechRecognitionMethod
+
+    fun onSpeechRecognized(text: String) {
+        inputText = if (inputText.isBlank()) text else "$inputText $text"
+    }
+
+    // ── Распознавание речи через Gemini (альтернатива системному Android) ──────
+    // Отдельная "лёгкая" модель независимо от той, что выбрана для самого чата —
+    // у неё отдельная (намного большая) дневная квота запросов, транскрипция
+    // не задевает лимит основной модели.
+    private val transcriptionModel = "gemini-2.5-flash-lite"
+
+    var isRecordingVoice by mutableStateOf(false)
+        private set
+    var isTranscribing by mutableStateOf(false)
+        private set
+
+    private var mediaRecorder: MediaRecorder? = null
+    private var recordingFile: File? = null
+    private var autoStopJob: Job? = null
+
+    fun startRecordingVoiceGemini() {
+        if (isRecordingVoice) return
+        if (app.securePrefs.apiKey.isBlank()) {
+            errorMessage = "Сначала укажите API-ключ Gemini в настройках"
+            return
+        }
+
+        val file = File(app.cacheDir, "voice_input_${System.currentTimeMillis()}.aac")
+        @Suppress("DEPRECATION") // MediaRecorder(Context) требует API 31+, minSdk проекта — 26
+        val recorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setOutputFile(file.absolutePath)
+        }
+        try {
+            recorder.prepare()
+            recorder.start()
+        } catch (e: Exception) {
+            recorder.release()
+            errorMessage = "Не удалось начать запись: ${e.message}"
+            return
+        }
+
+        mediaRecorder = recorder
+        recordingFile = file
+        isRecordingVoice = true
+
+        autoStopJob = viewModelScope.launch {
+            delay(60_000)
+            stopRecordingVoiceGemini()
+        }
+    }
+
+    fun stopRecordingVoiceGemini() {
+        if (!isRecordingVoice) return
+        isRecordingVoice = false
+        autoStopJob?.cancel()
+        autoStopJob = null
+
+        val recorder = mediaRecorder
+        mediaRecorder = null
+        val audioFile = recordingFile
+        recordingFile = null
+
+        try {
+            recorder?.stop()
+        } catch (_: Exception) {
+            // Запись короче долей секунды (например, случайный тап) — stop() может упасть,
+            // файл в этом случае всё равно будет удалён ниже.
+        } finally {
+            recorder?.release()
+        }
+
+        if (audioFile == null) return
+        isTranscribing = true
+        viewModelScope.launch {
+            try {
+                val base64 = Base64.encodeToString(audioFile.readBytes(), Base64.NO_WRAP)
+                val service = GeminiService(app.securePrefs.apiKey, transcriptionModel)
+                val text = service.transcribe(base64, "audio/aac")
+                if (text.isNotBlank()) onSpeechRecognized(text)
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Не удалось распознать речь"
+            } finally {
+                isTranscribing = false
+                audioFile.delete()
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        autoStopJob?.cancel()
+        mediaRecorder?.apply {
+            try { stop() } catch (_: Exception) {}
+            release()
+        }
+        recordingFile?.delete()
+    }
+
     var errorMessage by mutableStateOf<String?>(null)
         private set
     var pendingFoodData by mutableStateOf<ParsedFoodData?>(null)

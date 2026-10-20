@@ -37,6 +37,11 @@ class MyFitApp : Application() {
             .build()
         securePrefs = SecurePrefs(this)
 
+        // Если запись голоса (распознавание через Gemini) не удалилась сама из-за
+        // аварийного завершения процесса — подчищаем кэш при следующем запуске.
+        cacheDir.listFiles { file -> file.name.startsWith("voice_input_") }
+            ?.forEach { it.delete() }
+
         CoroutineScope(Dispatchers.IO).launch {
             database.exerciseDao().insertAll(DefaultExercises.list)
             if (database.workoutTemplateDao().countBuiltin() == 0) {
