@@ -459,29 +459,34 @@ private fun RestTimerRow(vm: FitnessViewModel) {
             color = timerColor,
             modifier = Modifier.width(52.dp)
         )
-        // Quick presets
-        listOf(60, 90, 120).forEach { s ->
-            Surface(
-                shape  = MaterialTheme.shapes.small,
-                color  = if (!vm.restTimerRunning && vm.restTimerSec == s)
-                    MaterialTheme.colorScheme.tertiaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier
-                    .clickable { if (!vm.restTimerRunning) vm.restTimerSec = s }
-            ) {
-                Text(
-                    "${s}с",
-                    style    = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                    color    = if (!vm.restTimerRunning && vm.restTimerSec == s)
-                        MaterialTheme.colorScheme.onTertiaryContainer
+        // Quick presets (в минутах: 1, 1.5, 2, 2.5, 3) — в свою скроллящуюся строку,
+        // чтобы 5 пресетов не обрезались на узких экранах
+        Row(
+            modifier              = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(60, 90, 120, 150, 180).forEach { s ->
+                Surface(
+                    shape  = MaterialTheme.shapes.small,
+                    color  = if (!vm.restTimerRunning && vm.restTimerSec == s)
+                        MaterialTheme.colorScheme.tertiaryContainer
                     else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .clickable { if (!vm.restTimerRunning) vm.restTimerSec = s }
+                ) {
+                    Text(
+                        formatTimerMin(s),
+                        style    = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        color    = if (!vm.restTimerRunning && vm.restTimerSec == s)
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
-        Spacer(Modifier.weight(1f))
         FilledTonalIconButton(
             onClick  = { vm.toggleRestTimer() },
             modifier = Modifier.size(34.dp),
@@ -500,6 +505,11 @@ private fun formatTimerSec(sec: Int): String {
     val m = sec / 60
     val s = sec % 60
     return "%d:%02d".format(m, s)
+}
+
+private fun formatTimerMin(sec: Int): String {
+    val min = sec / 60f
+    return if (min == min.toInt().toFloat()) "${min.toInt()}м" else "${"%.1f".format(min)}м"
 }
 
 // ── Exercise log card ─────────────────────────────────────────────────────────
@@ -871,25 +881,24 @@ private fun AddSetDialog(vm: FitnessViewModel) {
                     onDecrement = { vm.decrementSetValue() },
                     onIncrement = { vm.incrementSetValue() }
                 )
-                if (timeBased) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier              = Modifier.fillMaxWidth()
-                    ) {
-                        listOf(30, 45, 60) .forEach { s ->
-                            Surface(
-                                shape    = MaterialTheme.shapes.small,
-                                color    = MaterialTheme.colorScheme.tertiaryContainer,
-                                modifier = Modifier
-                                    .clickable { vm.addSetValue = s }
-                            ) {
-                                Text(
-                                    "${s}с",
-                                    style    = MaterialTheme.typography.labelMedium,
-                                    color    = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier              = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                ) {
+                    val presets = if (timeBased) listOf(30, 45, 60, 120) else listOf(10, 20, 30, 40, 50)
+                    presets.forEach { s ->
+                        Surface(
+                            shape    = MaterialTheme.shapes.small,
+                            color    = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier
+                                .clickable { vm.addSetValue = s }
+                        ) {
+                            Text(
+                                if (timeBased) "${s}с" else "$s",
+                                style    = MaterialTheme.typography.labelMedium,
+                                color    = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }

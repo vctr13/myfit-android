@@ -121,7 +121,7 @@ fun DayDetailScreen(
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text(
-                                            if (entry.water_ml == 0f && entry.grams_g > 0f)
+                                            if (entry.grams_g > 0f)
                                                 "${entry.name} — ${entry.grams_g.roundToInt()} гр"
                                             else entry.name,
                                             style = MaterialTheme.typography.bodyMedium
