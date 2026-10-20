@@ -11,6 +11,7 @@ import com.example.myfit.data.db.entity.ChatMessage
 import com.example.myfit.data.db.entity.FoodEntry
 import com.example.myfit.data.db.entity.UserFacts
 import com.example.myfit.data.model.ParsedFoodData
+import com.example.myfit.data.model.ParsedFoodItem
 import com.example.myfit.data.repository.ChatRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +80,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun confirmFood(mealType: String, editedGrams: List<Float>) {
+    fun confirmFood(mealType: String, editedItems: List<ParsedFoodItem>) {
         val data = pendingFoodData ?: return
         pendingFoodData = null
         val today = LocalDate.now().toString()
@@ -88,7 +89,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val dao = app.database.foodEntryDao()
-            data.items.forEachIndexed { index, item ->
+            editedItems.forEach { item ->
                 dao.insert(
                     FoodEntry(
                         date = entryDate,
@@ -101,7 +102,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         carbs = item.carbs,
                         fiber = item.fiber.takeIf { it > 0 },
                         water_ml = item.waterMl,
-                        grams_g = editedGrams.getOrElse(index) { item.amountG },
+                        grams_g = item.amountG,
                         source = "ai_chat",
                         confidence = 0.85f
                     )

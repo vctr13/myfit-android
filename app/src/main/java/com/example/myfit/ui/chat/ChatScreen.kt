@@ -1,6 +1,7 @@
 ﻿package com.example.myfit.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -77,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myfit.data.db.entity.ChatMessage
 import com.example.myfit.data.model.ParsedFoodData
+import com.example.myfit.data.model.ParsedFoodItem
+import com.example.myfit.data.model.scaledTo
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -186,7 +190,7 @@ fun ChatScreen(
                 HorizontalDivider()
                 FoodConfirmCard(
                     foodData = foodData,
-                    onConfirm = { mealType, editedGrams -> vm.confirmFood(mealType, editedGrams) },
+                    onConfirm = { mealType, editedItems -> vm.confirmFood(mealType, editedItems) },
                     onDismiss = { vm.dismissFood() }
                 )
             }
@@ -341,7 +345,7 @@ private fun FactsDialog(vm: ChatViewModel) {
 @Composable
 private fun FoodConfirmCard(
     foodData: ParsedFoodData,
-    onConfirm: (mealType: String, editedGrams: List<Float>) -> Unit,
+    onConfirm: (mealType: String, editedItems: List<ParsedFoodItem>) -> Unit,
     onDismiss: () -> Unit
 ) {
     val mealTypes = listOf(
@@ -402,6 +406,11 @@ private fun FoodConfirmCard(
             val waterNames = setOf("вода", "water", "чай", "кофе", "сок", "молоко", "напиток", "напитки")
             foodData.items.forEachIndexed { index, item ->
                 if (item.name.lowercase() in waterNames) return@forEachIndexed
+                val editedGrams = gramsText[index].value.toFloatOrNull() ?: 0f
+                val isGramsError = gramsText[index].value.toIntOrNull().let { it == null || it == 0 }
+                // КБЖУ пересчитывается пропорционально при каждом изменении граммов —
+                // читает то же состояние, что и поле ввода, поэтому обновляется само
+                val displayItem = item.scaledTo(editedGrams)
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -414,27 +423,44 @@ private fun FoodConfirmCard(
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
-                            value = gramsText[index].value,
-                            onValueChange = { new ->
-                                if (new.length <= 5 && new.all { it.isDigit() }) gramsText[index].value = new
-                            },
-                            singleLine = true,
-                            isError = gramsText[index].value.toIntOrNull().let { it == null || it == 0 },
-                            placeholder = { Text("г") },
-                            suffix = { Text("г") },
-                            textStyle = MaterialTheme.typography.bodySmall,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.width(84.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            modifier = Modifier
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isGramsError) MaterialTheme.colorScheme.error
+                                            else MaterialTheme.colorScheme.outline,
+                                    shape = MaterialTheme.shapes.extraSmall
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            BasicTextField(
+                                value = gramsText[index].value,
+                                onValueChange = { new ->
+                                    if (new.length <= 5 && new.all { it.isDigit() }) gramsText[index].value = new
+                                },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                ),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(32.dp)
+                            )
+                            Text(
+                                "г",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
                         Text(
-                            "${item.kcal.roundToInt()} ккал",
+                            "${displayItem.kcal.roundToInt()} ккал",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
                     Text(
-                        "Б:${"%.1f".format(item.protein)}г  Ж:${"%.1f".format(item.fat)}г  У:${"%.1f".format(item.carbs)}г",
+                        "Б:${"%.1f".format(displayItem.protein)}г  Ж:${"%.1f".format(displayItem.fat)}г  У:${"%.1f".format(displayItem.carbs)}г",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                     )
@@ -466,8 +492,10 @@ private fun FoodConfirmCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        val grams = gramsText.map { it.value.toFloatOrNull() ?: 0f }
-                        onConfirm(selectedMeal, grams)
+                        val editedItems = foodData.items.mapIndexed { index, item ->
+                            item.scaledTo(gramsText[index].value.toFloatOrNull() ?: 0f)
+                        }
+                        onConfirm(selectedMeal, editedItems)
                     },
                     modifier = Modifier.weight(1f)
                 ) {

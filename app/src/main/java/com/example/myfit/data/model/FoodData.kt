@@ -23,3 +23,20 @@ data class ChatResult(
     val text: String,
     val foodData: ParsedFoodData?
 )
+
+// Пересчитывает КБЖУ/клетчатку/воду продукта пропорционально исправленному весу —
+// используется, когда пользователь правит граммы AI в карточке подтверждения.
+// Без исходного веса (amountG <= 0) пропорцию составить не из чего — оставляем КБЖУ как есть.
+fun ParsedFoodItem.scaledTo(editedGrams: Float): ParsedFoodItem {
+    if (amountG <= 0f || editedGrams <= 0f) return this
+    val ratio = editedGrams / amountG
+    return copy(
+        amountG = editedGrams,
+        kcal = kcal * ratio,
+        protein = protein * ratio,
+        fat = fat * ratio,
+        carbs = carbs * ratio,
+        fiber = fiber * ratio,
+        waterMl = waterMl * ratio
+    )
+}
