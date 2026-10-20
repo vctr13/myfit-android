@@ -2,12 +2,15 @@
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,6 +69,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -423,35 +428,49 @@ private fun FoodConfirmCard(
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier.weight(1f)
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        val focusRequester = remember { FocusRequester() }
+                        // Видимая рамка компактная, но зона нажатия вокруг неё расширена
+                        // до рекомендованного минимума 48dp — иначе в маленькую рамку тяжело
+                        // попасть пальцем (что и произошло: без этого поле выглядело нерабочим).
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isGramsError) MaterialTheme.colorScheme.error
-                                            else MaterialTheme.colorScheme.outline,
-                                    shape = MaterialTheme.shapes.extraSmall
-                                )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { focusRequester.requestFocus() }
                         ) {
-                            BasicTextField(
-                                value = gramsText[index].value,
-                                onValueChange = { new ->
-                                    if (new.length <= 5 && new.all { it.isDigit() }) gramsText[index].value = new
-                                },
-                                singleLine = true,
-                                textStyle = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                ),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(32.dp)
-                            )
-                            Text(
-                                "г",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                modifier = Modifier
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isGramsError) MaterialTheme.colorScheme.error
+                                                else MaterialTheme.colorScheme.outline,
+                                        shape = MaterialTheme.shapes.extraSmall
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                BasicTextField(
+                                    value = gramsText[index].value,
+                                    onValueChange = { new ->
+                                        if (new.length <= 5 && new.all { it.isDigit() }) gramsText[index].value = new
+                                    },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    ),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.width(32.dp).focusRequester(focusRequester)
+                                )
+                                Text(
+                                    "г",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                         Text(
                             "${displayItem.kcal.roundToInt()} ккал",
