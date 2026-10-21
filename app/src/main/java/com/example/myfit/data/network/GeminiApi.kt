@@ -114,7 +114,12 @@ class GeminiService(private val apiKey: String, private val model: String) {
     suspend fun transcribe(audioBase64: String, mimeType: String): String = withContext(Dispatchers.IO) {
         val requestBody = GeminiRequest(
             systemInstruction = GeminiPartList(listOf(
-                GeminiPart(text = "Ты — инструмент транскрипции речи. Отвечай только расшифрованным текстом на русском языке, без кавычек, комментариев и пояснений.")
+                GeminiPart(text = "Ты — инструмент транскрипции речи. Отвечай только расшифрованным текстом на " +
+                    "русском языке, без кавычек, комментариев и пояснений. Расставляй естественную пунктуацию " +
+                    "(запятые, точки) по смыслу и паузам в речи — особенно ставь запятую между соседними " +
+                    "продуктами, если человек перечисляет несколько блюд подряд (например: «творог 200 грамм, " +
+                    "банан, кофе с молоком»). Это нужно, чтобы следующий шаг разбора текста не перепутал, к " +
+                    "какому продукту относится число.")
             )),
             contents = listOf(
                 GeminiContent(
