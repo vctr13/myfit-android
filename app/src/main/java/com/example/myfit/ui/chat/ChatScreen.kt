@@ -496,22 +496,31 @@ private fun FoodConfirmCard(
                 // КБЖУ пересчитывается пропорционально при каждом изменении граммов —
                 // читает то же состояние, что и поле ввода, поэтому обновляется само
                 val displayItem = item.scaledTo(editedGrams)
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Левая колонка: название + КБЖУ в две строки
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             item.name,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.weight(1f)
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
-                        val focusRequester = remember { FocusRequester() }
-                        // Видимая рамка компактная, но зона нажатия вокруг неё расширена
-                        // до рекомендованного минимума 48dp — иначе в маленькую рамку тяжело
-                        // попасть пальцем (что и произошло: без этого поле выглядело нерабочим).
+                        Text(
+                            "Б:${"%.1f".format(displayItem.protein)}г  Ж:${"%.1f".format(displayItem.fat)}г  У:${"%.1f".format(displayItem.carbs)}г",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                    // Правая колонка: граммы + ккал, растянута по высоте обеих строк слева —
+                    // зона нажатия 48dp теперь не торчит лишним воздухом над одной строкой текста
+                    val focusRequester = remember { FocusRequester() }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
@@ -558,11 +567,6 @@ private fun FoodConfirmCard(
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
-                    Text(
-                        "Б:${"%.1f".format(displayItem.protein)}г  Ж:${"%.1f".format(displayItem.fat)}г  У:${"%.1f".format(displayItem.carbs)}г",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
-                    )
                 }
             }
             if (foodData.waterMl > 0) {
