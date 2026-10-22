@@ -524,7 +524,7 @@ private fun FoodConfirmCard(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
